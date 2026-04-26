@@ -7,34 +7,37 @@ class Board:
         self.size = size
         self.grid = [['.' for _ in range(size)] for _ in range(size)]
 
-        # Initial knight positions
-        self.red_pos = (0, 4)   # (1,5) in 1-based indexing
-        self.blue_pos = (8, 4)  # (9,5)
+        # Correct positions
+        self.blue_pos = (0, size // 2)        # Top middle
+        self.red_pos = (size - 1, size // 2)  # Bottom middle
 
         self.place_knights()
         self.place_fire()
 
     def place_knights(self):
-        r, c = self.red_pos
-        self.grid[r][c] = 'R'
+        br, bc = self.blue_pos
+        rr, rc = self.red_pos
 
-        r, c = self.blue_pos
-        self.grid[r][c] = 'B'
+        self.grid[br][bc] = 'B'
+        self.grid[rr][rc] = 'R'
 
-    def place_fire(self, fire_count=6):
-        """Place symmetric fire cells"""
+    def place_fire(self, fire_pairs=4):
+        """
+        Place fire in vertical symmetry:
+        (r, c) ↔ (size-1-r, c)
+        """
+
         placed = 0
 
-        while placed < fire_count:
-            r = random.randint(0, self.size//2 - 1)
+        while placed < fire_pairs:
+            r = random.randint(1, self.size // 2 - 1)  # avoid first row (blue)
             c = random.randint(0, self.size - 1)
 
             r_sym = self.size - 1 - r
-            c_sym = self.size - 1 - c
 
-            if self.is_empty(r, c) and self.is_empty(r_sym, c_sym):
+            if self.is_empty(r, c) and self.is_empty(r_sym, c):
                 self.grid[r][c] = 'F'
-                self.grid[r_sym][c_sym] = 'F'
+                self.grid[r_sym][c] = 'F'
                 placed += 1
 
     def is_empty(self, r, c):
