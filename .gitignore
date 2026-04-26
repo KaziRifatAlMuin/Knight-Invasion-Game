@@ -1,0 +1,8 @@
+# Ignore helper folder used by agent
+.helper/
+
+# Common ignores
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
