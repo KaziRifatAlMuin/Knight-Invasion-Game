@@ -5,6 +5,7 @@ import sys
 
 import pygame
 
+from agents.minimax_agent import MinimaxAgent
 from game.board import Board, HEIGHT, WIDTH
 from game.rules import GameState
 
@@ -61,7 +62,7 @@ def show_mode_menu():
     options = [
         ("2 Player", "Play local hot-seat duel"),
         ("Player vs Fuzzy Agent", "Coming soon"),
-        ("Player vs Minimax Agent", "Coming soon"),
+        ("Player vs Minimax Agent", "Playable"),
         ("Minimax Agent vs Fuzzy Agent", "Coming soon"),
     ]
 
@@ -220,14 +221,15 @@ def start_flow():
 
     while True:
         mode_idx = show_mode_menu()
-        if mode_idx == 0:
-            return choose_difficulty_fire_count()
+        if mode_idx in (0, 2):
+            return mode_idx, choose_difficulty_fire_count()
         show_coming_soon(mode_labels[mode_idx])
 
 
-def main_game(fire_count):
+def main_game(fire_count, mode_idx):
     state = GameState(fire_count)
     board = Board(screen)
+    minimax_agent = MinimaxAgent(player=2, depth=2) if mode_idx == 2 else None
 
     player = 1
     mode = "choose"
@@ -240,16 +242,76 @@ def main_game(fire_count):
         if winner:
             return winner
 
+        agent_turn = minimax_agent is not None and player == minimax_agent.player
         must_move = state.must_move(player)
         can_block = state.block_possible()
 
-        if must_move:
-            message = "Adjacent to fire: you must move"
-        elif mode == "choose":
-            message = "Choose MOVE or BLOCK"
+        if agent_turn:
+            mode = "choose"
+            selected = None
+            highlights = []
+            message = "Minimax Agent is choosing..."
+        else:
+            if must_move:
+                message = "Adjacent to fire: you must move"
+            elif mode == "choose":
+                message = "Choose MOVE or BLOCK"
+
+        if mode_idx == 2:
+            role_items = [
+                ((0, 102, 255), "Blue Knight: Human"),
+                ((220, 20, 60), "Red Knight: Minimax Agent"),
+            ]
+            if agent_turn:
+                focus_text = "MINIMAX AGENT TURN"
+                focus_color = (220, 20, 60)
+            else:
+                focus_text = "YOUR TURN (HUMAN)"
+                focus_color = (0, 102, 255)
+        else:
+            role_items = [
+                ((0, 102, 255), "Blue Knight: Player 1"),
+                ((220, 20, 60), "Red Knight: Player 2"),
+            ]
+            focus_text = "LOCAL 2-PLAYER MODE"
+            focus_color = (52, 247, 255)
 
         info = f"Player {player} turn | {message}"
-        board.draw(state, mode, highlights, selected, info, can_block, must_move)
+        board.draw(
+            state,
+            mode,
+            highlights,
+            selected,
+            info,
+            can_block,
+            must_move,
+            role_items=role_items,
+            focus_text=focus_text,
+            focus_color=focus_color,
+        )
+
+        if agent_turn:
+            action = minimax_agent.choose_action(state)
+            if action is None:
+                moves = state.get_moves(player)
+                if moves:
+                    action = ("move", moves[0])
+
+            if action is not None:
+                action_type, payload = action
+                if action_type == "move":
+                    state.apply_move(player, payload)
+                    message = f"Minimax moved to ({payload[0] + 1}, {payload[1] + 1})"
+                else:
+                    c1, c2 = payload
+                    state.apply_block(player, c1, c2)
+                    message = (
+                        f"Minimax blocked ({c1[0] + 1},{c1[1] + 1}) and ({c2[0] + 1},{c2[1] + 1})"
+                    )
+
+            player = 3 - player
+            clock.tick(60)
+            continue
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -333,8 +395,8 @@ def main_game(fire_count):
 
 def main():
     while True:
-        fire_count = start_flow()
-        winner = main_game(fire_count)
+        mode_idx, fire_count = start_flow()
+        winner = main_game(fire_count, mode_idx)
         should_restart = show_win_screen(winner)
         if not should_restart:
             break
