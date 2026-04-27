@@ -1,6 +1,44 @@
 # main.py
 
+import random
 from game.board import Board
+
+
+# ---------------------------
+# GLOBAL INPUT HANDLER (QUIT)
+# ---------------------------
+
+def get_input(prompt):
+    user = input(prompt)
+
+    if user.lower() == 'q':
+        print("\nGame exited.")
+        exit()
+
+    return user
+
+
+# ---------------------------
+# DIFFICULTY
+# ---------------------------
+
+def choose_fire_pairs():
+    print("Select Difficulty:")
+    print("1. Easy")
+    print("2. Medium")
+    print("3. Hard")
+
+    while True:
+        choice = get_input("Enter choice: ")
+
+        if choice == '1':
+            return random.choice([3, 4, 5])   # 6–10 fires
+        elif choice == '2':
+            return random.choice([8, 9, 10, 11])  # 16–22 fires
+        elif choice == '3':
+            return random.choice([14, 15, 16, 17])  # 28–34 fires
+        else:
+            print("Invalid choice.")
 
 
 # ---------------------------
@@ -9,20 +47,38 @@ from game.board import Board
 
 def input_move():
     try:
-        r, c = map(int, input("Enter move (row col): ").split())
+        user = get_input("Enter move (row col): ")
+        r, c = map(int, user.split())
         return (r - 1, c - 1)
     except:
         return None
 
 
-def input_block():
+def input_cell(prompt):
     try:
-        print("Enter two cells to block:")
-        r1, c1 = map(int, input("Cell 1 (row col): ").split())
-        r2, c2 = map(int, input("Cell 2 (row col): ").split())
-        return (r1 - 1, c1 - 1), (r2 - 1, c2 - 1)
+        user = get_input(prompt)
+        r, c = map(int, user.split())
+        return (r - 1, c - 1)
     except:
-        return None, None
+        return None
+
+
+def show_cells(cells):
+    return [(r+1, c+1) for r, c in cells]
+
+
+def get_all_empty_cells(state):
+    cells = []
+    for r in range(9):
+        for c in range(9):
+            if (
+                (r, c) not in state.blocks and
+                (r, c) not in state.fires and
+                (r, c) != state.p1 and
+                (r, c) != state.p2
+            ):
+                cells.append((r, c))
+    return cells
 
 
 # ---------------------------
@@ -30,19 +86,21 @@ def input_block():
 # ---------------------------
 
 def play():
-    board = Board()
+    fire_pairs = choose_fire_pairs()
+    board = Board(fire_pairs)
     state = board.state
 
-    player = 1  # 1 = Blue, 2 = Red
+    player = 1
 
-    print("Knight Invasion Game Started!")
+    print("\n🔥 Knight Invasion Game Started!")
     print("Player 1 (Blue): Top → Bottom")
     print("Player 2 (Red): Bottom → Top")
+    print("Type 'q' anytime to quit the game.\n")
 
     while True:
         board.display()
 
-        # Check winner
+        # Winner check
         winner = state.check_winner()
         if winner:
             print(f"🎉 Player {winner} wins!")
@@ -53,11 +111,11 @@ def play():
         moves = state.get_moves(player)
 
         # ----------------------------------
-        # MUST MOVE (Fire Rule)
+        # MUST MOVE (FIRE RULE)
         # ----------------------------------
         if state.must_move(player):
-            print("⚠ You are near fire! You MUST move.")
-            print("Available moves:", [(r+1, c+1) for r, c in moves])
+            print("⚠ Near fire → MUST MOVE")
+            print("Available moves:", show_cells(moves))
 
             while True:
                 move = input_move()
@@ -73,10 +131,10 @@ def play():
             print("1. Move")
             print("2. Block")
 
-            # If no block possible → force move
+            # If no valid block → force move
             if not state.block_possible():
-                print("⚠ No valid block possible → You must move")
-                print("Available moves:", [(r+1, c+1) for r, c in moves])
+                print("⚠ No valid block → MUST MOVE")
+                print("Available moves:", show_cells(moves))
 
                 while True:
                     move = input_move()
@@ -86,11 +144,11 @@ def play():
                     print("Invalid move. Try again.")
 
             else:
-                choice = input("Choose action (1/2): ")
+                choice = get_input("Choose action (1/2): ")
 
                 # ---------- MOVE ----------
                 if choice == '1':
-                    print("Available moves:", [(r+1, c+1) for r, c in moves])
+                    print("Available moves:", show_cells(moves))
 
                     while True:
                         move = input_move()
@@ -101,17 +159,34 @@ def play():
 
                 # ---------- BLOCK ----------
                 elif choice == '2':
+                    empty_cells = get_all_empty_cells(state)
+                    print("Available cells:", show_cells(empty_cells))
+
+                    # First cell
                     while True:
-                        c1, c2 = input_block()
-
-                        if c1 is None:
-                            print("Invalid input. Try again.")
-                            continue
-
-                        if state.apply_block(player, c1, c2):
+                        c1 = input_cell("Select first cell: ")
+                        if c1 in empty_cells:
                             break
-                        else:
-                            print("Invalid block (violates rules). Try again.")
+                        print("Invalid cell. Try again.")
+
+                    # Valid second cells
+                    valid_second = [
+                        c for c in empty_cells
+                        if c != c1 and state.can_block(player, c1, c)
+                    ]
+
+                    if not valid_second:
+                        print("⚠ No valid second cell → must move")
+                        continue
+
+                    print("Valid second cells:", show_cells(valid_second))
+
+                    while True:
+                        c2 = input_cell("Select second cell: ")
+                        if c2 in valid_second:
+                            state.apply_block(player, c1, c2)
+                            break
+                        print("Invalid second cell. Try again.")
 
                 else:
                     print("Invalid choice.")

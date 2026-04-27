@@ -4,16 +4,29 @@ from game.rules import GameState
 
 
 class Board:
-    def __init__(self):
-        self.state = GameState()
+    def __init__(self, fire_pairs):
+        """
+        Initialize board with given fire_pairs.
+        fire_pairs = number of symmetric fire pairs (each pair = 2 cells)
+        """
+        self.size = 9
+        self.state = GameState(fire_pairs)
 
-    # ---------------------------
-    # Display Only (NO LOGIC)
-    # ---------------------------
+    # ----------------------------------
+    # DISPLAY BOARD
+    # ----------------------------------
 
     def display(self):
-        size = 9
-        grid = [['.' for _ in range(size)] for _ in range(size)]
+        """
+        Prints the current board state.
+        B = Player 1 (Blue)
+        R = Player 2 (Red)
+        F = Fire
+        X = Block
+        . = Empty
+        """
+
+        grid = [['.' for _ in range(self.size)] for _ in range(self.size)]
 
         # Fires
         for r, c in self.state.fires:
@@ -24,17 +37,52 @@ class Board:
             grid[r][c] = 'X'
 
         # Players
-        r1, c1 = self.state.p1
-        r2, c2 = self.state.p2
+        br, bc = self.state.p1
+        rr, rc = self.state.p2
 
-        grid[r1][c1] = 'B'  # Player 1
-        grid[r2][c2] = 'R'  # Player 2
+        grid[br][bc] = 'B'
+        grid[rr][rc] = 'R'
 
-        # Print nicely
-        print("\n   " + " ".join(str(i+1) for i in range(size)))
-        print("  +" + "--"*size + "+")
+        # Header
+        print("\n   " + " ".join(str(i + 1) for i in range(self.size)))
+        print("  +" + "--" * self.size + "+")
 
-        for i in range(size):
-            print(f"{i+1:2}| " + " ".join(grid[i]) + " |")
+        # Rows
+        for i in range(self.size):
+            print(f"{i + 1:2}| " + " ".join(grid[i]) + " |")
 
-        print("  +" + "--"*size + "+\n")
+        print("  +" + "--" * self.size + "+\n")
+
+    # ----------------------------------
+    # OPTIONAL: RESET BOARD
+    # ----------------------------------
+
+    def reset(self, fire_pairs):
+        """
+        Reset board with new fire configuration.
+        """
+        self.state = GameState(fire_pairs)
+
+    # ----------------------------------
+    # OPTIONAL: GET RAW GRID (for future GUI/AI)
+    # ----------------------------------
+
+    def get_grid(self):
+        """
+        Returns a 2D grid representation (useful for AI/debugging).
+        """
+        grid = [['.' for _ in range(self.size)] for _ in range(self.size)]
+
+        for r, c in self.state.fires:
+            grid[r][c] = 'F'
+
+        for r, c in self.state.blocks:
+            grid[r][c] = 'X'
+
+        br, bc = self.state.p1
+        rr, rc = self.state.p2
+
+        grid[br][bc] = 'B'
+        grid[rr][rc] = 'R'
+
+        return grid

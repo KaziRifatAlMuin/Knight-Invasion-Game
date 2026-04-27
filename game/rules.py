@@ -160,12 +160,12 @@ def generate_symmetric_fire_safe(p1, p2, num_pairs=3):
 # ----------------------------------
 
 class GameState:
-    def __init__(self):
+    def __init__(self, fire_pairs=3):
         self.p1 = (0, 4)
         self.p2 = (8, 4)
 
         self.blocks = set()
-        self.fires = generate_symmetric_fire_safe(self.p1, self.p2)
+        self.fires = generate_symmetric_fire_safe(self.p1, self.p2, fire_pairs)
 
     def clone(self):
         return copy.deepcopy(self)
