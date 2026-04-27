@@ -1,21 +1,31 @@
+# game/rules.py
+
 from collections import deque
 import random
 import copy
 
 BOARD_SIZE = 9
 
-# Knight moves (L-shape)
 KNIGHT_DIRS = [
     (2, 1), (2, -1), (-2, 1), (-2, -1),
     (1, 2), (1, -2), (-1, 2), (-1, -2)
 ]
 
 # ----------------------------------
-# Utility
+# BASIC HELPERS
 # ----------------------------------
 
 def in_bounds(r, c):
     return 0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE
+
+
+def is_valid_cell(r, c, blocks, fires, opponent):
+    return (
+        in_bounds(r, c)
+        and (r, c) not in blocks
+        and (r, c) not in fires
+        and (r, c) != opponent
+    )
 
 
 def is_adjacent_to_fire(pos, fires):
@@ -26,28 +36,15 @@ def is_adjacent_to_fire(pos, fires):
     return False
 
 
-def is_valid_cell(r, c, blocks, fires, opponent):
-    if not in_bounds(r, c):
-        return False
-    if (r, c) in blocks:
-        return False
-    if (r, c) in fires:
-        return False
-    if (r, c) == opponent:
-        return False
-    return True
-
-
 # ----------------------------------
-# Knight Moves
+# KNIGHT MOVEMENT
 # ----------------------------------
 
 def get_knight_moves(pos, opponent, blocks, fires):
     moves = []
-    r, c = pos
 
     for dr, dc in KNIGHT_DIRS:
-        nr, nc = r + dr, c + dc
+        nr, nc = pos[0] + dr, pos[1] + dc
         if is_valid_cell(nr, nc, blocks, fires, opponent):
             moves.append((nr, nc))
 
@@ -55,7 +52,7 @@ def get_knight_moves(pos, opponent, blocks, fires):
 
 
 # ----------------------------------
-# BFS Path Validation (CRITICAL RULE)
+# BFS PATH VALIDATION
 # ----------------------------------
 
 def has_valid_path(start, target_row, opponent, blocks, fires):
@@ -79,122 +76,152 @@ def has_valid_path(start, target_row, opponent, blocks, fires):
 
 
 # ----------------------------------
-# Blocking Rule
+# BLOCK VALIDATION
 # ----------------------------------
 
-def can_place_two_blocks(blocks, fires, p1_pos, p2_pos, cell1, cell2):
-    # Must be two distinct cells
-    if cell1 == cell2:
+def can_place_two_blocks(blocks, fires, p1, p2, c1, c2):
+    if c1 == c2:
         return False
 
-    new_blocks = {cell1, cell2}
-
-    # Cannot block invalid cells
-    for cell in new_blocks:
-        if cell in blocks or cell in fires:
+    for cell in [c1, c2]:
+        if (
+            cell in blocks
+            or cell in fires
+            or cell == p1
+            or cell == p2
+        ):
             return False
-        if cell == p1_pos or cell == p2_pos:
-            return False
 
-    temp_blocks = blocks.union(new_blocks)
+    temp_blocks = blocks.union({c1, c2})
 
-    # MUST maintain path for BOTH players
-    if not has_valid_path(p1_pos, BOARD_SIZE - 1, p2_pos, temp_blocks, fires):
+    # MUST keep paths for BOTH players
+    if not has_valid_path(p1, BOARD_SIZE - 1, p2, temp_blocks, fires):
         return False
-    if not has_valid_path(p2_pos, 0, p1_pos, temp_blocks, fires):
+
+    if not has_valid_path(p2, 0, p1, temp_blocks, fires):
         return False
 
     return True
 
 
 # ----------------------------------
-# Fire Generation (Symmetrical)
+# CHECK IF ANY BLOCK IS POSSIBLE
 # ----------------------------------
 
-def generate_symmetric_fire(num_pairs=3):
-    fires = set()
+def exists_valid_block(blocks, fires, p1, p2):
+    empty_cells = [
+        (r, c)
+        for r in range(BOARD_SIZE)
+        for c in range(BOARD_SIZE)
+        if (r, c) not in blocks
+        and (r, c) not in fires
+        and (r, c) != p1
+        and (r, c) != p2
+    ]
 
-    while len(fires) < num_pairs * 2:
-        r = random.randint(0, BOARD_SIZE // 2 - 1)
-        c = random.randint(0, BOARD_SIZE - 1)
+    n = len(empty_cells)
 
-        sym_r = BOARD_SIZE - 1 - r
-        sym_c = c
+    for i in range(n):
+        for j in range(i + 1, n):
+            if can_place_two_blocks(blocks, fires, p1, p2,
+                                    empty_cells[i], empty_cells[j]):
+                return True
 
-        fires.add((r, c))
-        fires.add((sym_r, sym_c))
-
-    return fires
+    return False
 
 
 # ----------------------------------
-# Game State
+# FIRE GENERATION (SAFE)
+# ----------------------------------
+
+def generate_symmetric_fire_safe(p1, p2, num_pairs=3):
+    while True:
+        fires = set()
+
+        while len(fires) < num_pairs * 2:
+            r = random.randint(1, BOARD_SIZE // 2 - 1)
+            c = random.randint(0, BOARD_SIZE - 1)
+
+            sym = (BOARD_SIZE - 1 - r, c)
+
+            fires.add((r, c))
+            fires.add(sym)
+
+        # ensure valid paths exist
+        if (
+            has_valid_path(p1, BOARD_SIZE - 1, p2, set(), fires)
+            and has_valid_path(p2, 0, p1, set(), fires)
+        ):
+            return fires
+
+
+# ----------------------------------
+# GAME STATE
 # ----------------------------------
 
 class GameState:
     def __init__(self):
-        self.p1_pos = (0, 4)   # (1,5)
-        self.p2_pos = (8, 4)   # (9,5)
+        self.p1 = (0, 4)
+        self.p2 = (8, 4)
 
         self.blocks = set()
-        self.fires = generate_symmetric_fire()
+        self.fires = generate_symmetric_fire_safe(self.p1, self.p2)
 
     def clone(self):
         return copy.deepcopy(self)
 
     # ----------------------------------
-    # Legal Actions
+    # ACTIONS
     # ----------------------------------
 
-    def get_legal_moves(self, player):
-        pos = self.p1_pos if player == 1 else self.p2_pos
-        opp = self.p2_pos if player == 1 else self.p1_pos
+    def get_moves(self, player):
+        pos = self.p1 if player == 1 else self.p2
+        opp = self.p2 if player == 1 else self.p1
 
         return get_knight_moves(pos, opp, self.blocks, self.fires)
 
-    def can_block(self, player):
-        pos = self.p1_pos if player == 1 else self.p2_pos
+    def must_move(self, player):
+        pos = self.p1 if player == 1 else self.p2
+        return is_adjacent_to_fire(pos, self.fires)
 
-        # SPECIAL RULE: must move if near fire
-        if is_adjacent_to_fire(pos, self.fires):
+    def can_block(self, player, c1, c2):
+        if self.must_move(player):
             return False
 
-        return True
+        return can_place_two_blocks(
+            self.blocks, self.fires,
+            self.p1, self.p2,
+            c1, c2
+        )
+
+    def block_possible(self):
+        return exists_valid_block(self.blocks, self.fires, self.p1, self.p2)
 
     # ----------------------------------
-    # Apply Move
+    # APPLY ACTIONS
     # ----------------------------------
 
     def apply_move(self, player, move):
         if player == 1:
-            self.p1_pos = move
+            self.p1 = move
         else:
-            self.p2_pos = move
+            self.p2 = move
 
-    # ----------------------------------
-    # Apply Block
-    # ----------------------------------
-
-    def apply_block(self, player, cell1, cell2):
-        if not self.can_block(player):
+    def apply_block(self, player, c1, c2):
+        if not self.can_block(player, c1, c2):
             return False
 
-        if can_place_two_blocks(self.blocks, self.fires,
-                                self.p1_pos, self.p2_pos,
-                                cell1, cell2):
-            self.blocks.add(cell1)
-            self.blocks.add(cell2)
-            return True
-
-        return False
+        self.blocks.add(c1)
+        self.blocks.add(c2)
+        return True
 
     # ----------------------------------
-    # Winner Check
+    # WIN
     # ----------------------------------
 
     def check_winner(self):
-        if self.p1_pos[0] == BOARD_SIZE - 1:
+        if self.p1[0] == BOARD_SIZE - 1:
             return 1
-        if self.p2_pos[0] == 0:
+        if self.p2[0] == 0:
             return 2
         return None
