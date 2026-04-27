@@ -7,7 +7,7 @@ import pygame
 
 from game.board import Board, HEIGHT, WIDTH
 from game.rules import GameState
-
+from agents.fuzzy_agent import FuzzyAgent
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -60,7 +60,7 @@ def draw_menu_button(rect, label, sublabel="", hovered=False):
 def show_mode_menu():
     options = [
         ("2 Player", "Play local hot-seat duel"),
-        ("Player vs Fuzzy Agent", "Coming soon"),
+        ("Player vs Fuzzy Agent", "Blue Knight vs Fuzzy AI"),
         ("Player vs Minimax Agent", "Coming soon"),
         ("Minimax Agent vs Fuzzy Agent", "Coming soon"),
     ]
@@ -94,37 +94,6 @@ def show_mode_menu():
                 for idx, btn in enumerate(buttons):
                     if btn.collidepoint(event.pos):
                         return idx
-
-        clock.tick(60)
-
-
-def show_coming_soon(mode_name):
-    # make the back button larger and centered for easier clicking
-    back_btn_w, back_btn_h = 340, 72
-    back_btn = pygame.Rect(WIDTH // 2 - back_btn_w // 2, HEIGHT - 140, back_btn_w, back_btn_h)
-
-    while True:
-        draw_vertical_gradient(screen, BG_TOP, BG_BOTTOM)
-
-        title = HEADER_FONT.render(mode_name, True, (245, 250, 255))
-        msg = TEXT_FONT.render("COMING SOON", True, (255, 62, 163))
-        hint = SMALL_FONT.render("This mode is planned but not playable yet.", True, (158, 181, 219))
-
-        screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 210))
-        screen.blit(msg, (WIDTH // 2 - msg.get_width() // 2, 272))
-        screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, 316))
-
-        mouse = pygame.mouse.get_pos()
-        draw_menu_button(back_btn, "Back to mode selection", "", back_btn.collidepoint(mouse))
-
-        pygame.display.flip()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN and back_btn.collidepoint(event.pos):
-                return
 
         clock.tick(60)
 
@@ -173,12 +142,20 @@ def choose_difficulty_fire_count():
         clock.tick(60)
 
 
-def show_win_screen(winner):
+def show_win_screen(winner, is_vs_ai=False, ai_won=False):
     restart_btn = pygame.Rect(WIDTH // 2 - 200, HEIGHT - 150, 180, 58)
     quit_btn = pygame.Rect(WIDTH // 2 + 20, HEIGHT - 150, 180, 58)
 
-    winner_name = "Blue Knight" if winner == 1 else "Red Knight"
-    winner_color = (0, 229, 255) if winner == 1 else (255, 62, 163)
+    if is_vs_ai:
+        if winner == 1:
+            winner_name = "Blue Knight (You)"
+            winner_color = (0, 229, 255)
+        else:
+            winner_name = "Fuzzy AI"
+            winner_color = (255, 62, 163)
+    else:
+        winner_name = "Blue Knight" if winner == 1 else "Red Knight"
+        winner_color = (0, 229, 255) if winner == 1 else (255, 62, 163)
 
     while True:
         draw_vertical_gradient(screen, BG_TOP, BG_BOTTOM)
@@ -221,11 +198,47 @@ def start_flow():
     while True:
         mode_idx = show_mode_menu()
         if mode_idx == 0:
-            return choose_difficulty_fire_count()
-        show_coming_soon(mode_labels[mode_idx])
+            return ("2player", choose_difficulty_fire_count())
+        elif mode_idx == 1:
+            return ("player_vs_fuzzy", choose_difficulty_fire_count())
+        else:
+            # For now, show coming soon for other modes
+            show_coming_soon(mode_labels[mode_idx])
+            continue
 
 
-def main_game(fire_count):
+def show_coming_soon(mode_name):
+    back_btn_w, back_btn_h = 340, 72
+    back_btn = pygame.Rect(WIDTH // 2 - back_btn_w // 2, HEIGHT - 140, back_btn_w, back_btn_h)
+
+    while True:
+        draw_vertical_gradient(screen, BG_TOP, BG_BOTTOM)
+
+        title = HEADER_FONT.render(mode_name, True, (245, 250, 255))
+        msg = TEXT_FONT.render("COMING SOON", True, (255, 62, 163))
+        hint = SMALL_FONT.render("This mode is planned but not playable yet.", True, (158, 181, 219))
+
+        screen.blit(title, (WIDTH // 2 - title.get_width() // 2, 210))
+        screen.blit(msg, (WIDTH // 2 - msg.get_width() // 2, 272))
+        screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, 316))
+
+        mouse = pygame.mouse.get_pos()
+        draw_menu_button(back_btn, "Back to mode selection", "", back_btn.collidepoint(mouse))
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN and back_btn.collidepoint(event.pos):
+                return
+
+        clock.tick(60)
+
+
+def main_game_2player(fire_count):
+    """Original 2-player mode"""
     state = GameState(fire_count)
     board = Board(screen)
 
@@ -331,14 +344,192 @@ def main_game(fire_count):
         clock.tick(60)
 
 
+def main_game_player_vs_fuzzy(fire_count):
+    """
+    Player vs Fuzzy Agent mode
+    Player controls Blue Knight (Player 1), Fuzzy AI controls Red Knight (Player 2)
+    """
+    state = GameState(fire_count)
+    board = Board(screen)
+    fuzzy_agent = FuzzyAgent()  # AI controls Red (Player 2)
+    
+    is_ai_turn = False
+    mode = "choose"
+    selected = None
+    highlights = []
+    message = "Your turn! Choose MOVE or BLOCK"
+    
+    # Track AI decision delay
+    ai_timer = 0
+    AI_DELAY = 800  # milliseconds
+    
+    while True:
+        winner = state.check_winner()
+        if winner:
+            # Winner is 1 (Blue/Player) or 2 (Red/AI)
+            return winner
+        
+        current_player = 2 if is_ai_turn else 1
+        
+        # AI TURN
+        if is_ai_turn:
+            # Update message
+            board.draw(state, mode, highlights, selected, 
+                      f"AI (Fuzzy) is thinking... | {message}", 
+                      state.block_possible(), state.must_move(2))
+            pygame.display.flip()
+            
+            # Add delay for AI move (so player can see)
+            if ai_timer == 0:
+                ai_timer = pygame.time.get_ticks()
+            
+            if pygame.time.get_ticks() - ai_timer >= AI_DELAY:
+                # Get AI decision from fuzzy agent
+                action = fuzzy_agent.decide_action(state, 2)
+                
+                if action and action[0] == 'move':
+                    move_pos = action[1]
+                    # Convert from (row, col) format
+                    state.apply_move(2, move_pos)
+                    message = f"AI moved to ({move_pos[0]+1}, {move_pos[1]+1})"
+                    print(f"🤖 AI moved to {move_pos}")
+                    
+                elif action and action[0] == 'block':
+                    _, c1, c2 = action
+                    if state.apply_block(2, c1, c2):
+                        message = f"AI blocked cells ({c1[0]+1},{c1[1]+1}) and ({c2[0]+1},{c2[1]+1})"
+                        print(f"🤖 AI blocked {c1}, {c2}")
+                    else:
+                        message = "AI attempted invalid block"
+                
+                # Switch turn
+                is_ai_turn = False
+                mode = "choose"
+                selected = None
+                highlights = []
+                ai_timer = 0
+                
+                # Check win after AI move
+                winner = state.check_winner()
+                if winner:
+                    continue
+            else:
+                # Still waiting for AI delay
+                clock.tick(60)
+                continue
+        
+        # PLAYER TURN
+        must_move = state.must_move(1)
+        can_block = state.block_possible()
+        
+        if must_move:
+            message = "Adjacent to fire: you must move"
+        elif mode == "choose":
+            message = "Your turn! Choose MOVE or BLOCK"
+        
+        info = f"Blue Knight (YOU) | {message}"
+        board.draw(state, mode, highlights, selected, info, can_block, must_move)
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = event.pos
+                btn = board.get_button(pos)
+                
+                if btn == "move":
+                    if not is_ai_turn:
+                        mode = "move"
+                        selected = None
+                        highlights = state.get_moves(1)
+                        message = "Select a highlighted destination"
+                    continue
+                
+                if btn == "block":
+                    if not is_ai_turn:
+                        if must_move:
+                            message = "Blocking disabled: you are adjacent to fire"
+                        elif not can_block:
+                            message = "Blocking disabled: no valid two-cell block"
+                        else:
+                            mode = "block1"
+                            selected = None
+                            highlights = state.get_first_block_candidates(1)
+                            message = "Pick first block cell"
+                    continue
+                
+                cell = board.get_cell(pos)
+                if cell is None:
+                    continue
+                
+                # Handle move selection
+                if mode == "move" and not is_ai_turn:
+                    if cell in highlights:
+                        state.apply_move(1, cell)
+                        is_ai_turn = True
+                        mode = "choose"
+                        selected = None
+                        highlights = []
+                        message = "AI is thinking..."
+                        print(f"👤 Player moved to {cell}")
+                    continue
+                
+                # Handle block selection
+                if mode == "block1" and not is_ai_turn:
+                    if cell in highlights:
+                        selected = cell
+                        mode = "block2"
+                        highlights = state.get_second_block_candidates(1, selected)
+                        if highlights:
+                            message = "Pick second block cell"
+                        else:
+                            mode = "block1"
+                            selected = None
+                            highlights = state.get_first_block_candidates(1)
+                            message = "That first choice has no pair; pick another"
+                    continue
+                
+                if mode == "block2" and not is_ai_turn:
+                    if cell in highlights:
+                        if state.apply_block(1, selected, cell):
+                            is_ai_turn = True
+                            mode = "choose"
+                            selected = None
+                            highlights = []
+                            message = f"Blocks placed! AI is thinking..."
+                            print(f"👤 Player blocked {selected} and {cell}")
+                        else:
+                            mode = "block1"
+                            selected = None
+                            highlights = state.get_first_block_candidates(1)
+                            message = "Invalid pair; choose again"
+                    elif cell == selected:
+                        mode = "block1"
+                        selected = None
+                        highlights = state.get_first_block_candidates(1)
+                        message = "First block unselected"
+        
+        clock.tick(60)
+
+
 def main():
     while True:
-        fire_count = start_flow()
-        winner = main_game(fire_count)
-        should_restart = show_win_screen(winner)
+        game_mode, fire_count = start_flow()
+        
+        if game_mode == "2player":
+            winner = main_game_2player(fire_count)
+            should_restart = show_win_screen(winner, is_vs_ai=False)
+        elif game_mode == "player_vs_fuzzy":
+            winner = main_game_player_vs_fuzzy(fire_count)
+            should_restart = show_win_screen(winner, is_vs_ai=True, ai_won=(winner == 2))
+        else:
+            continue
+        
         if not should_restart:
             break
-
+    
     pygame.quit()
     sys.exit()
 
