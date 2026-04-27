@@ -28,64 +28,81 @@ A strategic **two-player AI board game** where two intelligent agents compete us
 
 ---
 
-## 🎮 Game Setup
+## Introduction
+Knight Invasion is a two-player strategic board game on a 9×9 grid where both players use Artificial Intelligence techniques. The project focuses on implementing and comparing MiniMax and Fuzzy Logic in a competitive environment with movement and blocking constraints.
 
-- Board Size: **9 × 9**
-- Initial Positions:
-  - Red Knight → (1, 5)
-  - Blue Knight → (9, 5)
+## Game Description
+There are two knights on a 9×9 board.
 
----
+- Knight-1 starts at (1,5)
+- Knight-2 starts at (9,5)
 
-## 🕹️ Gameplay Mechanics
+The goal of each knight is to reach any cell of the opponent’s starting row. The player who goes first has a winning advantage.
 
-Each turn, a player chooses ONE action:
+## Allowed Moves
 
-### ♞ 1. Knight Movement
-- Moves like a chess knight:
-  - 2 steps in one direction + 1 step perpendicular
-- Cannot move to:
+In each turn, a player can choose one of the following actions:
+
+### 1. Knight Movement
+
+- The knight moves using the standard chess knight move.
+- A move consists of:
+  - Two steps in one direction (up, down, left, or right), and
+  - One step perpendicular to that direction.
+- The knight can move to:
+  - Any empty cell inside the 9×9 board
+- The knight cannot move to:
   - Blocked cells
-  - Fire cells
-  - Opponent’s position
+  - A cell already occupied by the opponent knight
+  - A cell with Fire
 
-### 🚫 2. Blocking Cells
-- Block exactly **two empty cells**
+### 2. Blocking Cells
+
+- Instead of moving, a player may block exactly two empty cells in one turn.
 - Blocked cells:
-  - Are permanent
-  - Cannot be used again
+  - Become permanently unavailable for movement
+  - Cannot contain any knight, fire, or already blocked
 
----
+## Game Rules
 
-## 🧩 Game Rules
+### 1. Objective
 
-### 🏆 Objective
-- Red wins → reaches **row 9**
-- Blue wins → reaches **row 1**
+- Knight-1 wins by reaching any cell of row 9.
+- Knight-2 wins by reaching any cell of row 1.
 
-### 🔄 Turn Rule
-- Only one action per turn:
-  - Move OR block
+### 2. Path Validity Rule
 
-### 🚧 Path Validity Rule
-- Blocking must NOT remove all valid paths
-- Opponent must always have at least one path to goal
-- Path checking done using **BFS**
+- After creating blocks, the opponent must still have at least one valid path
+- The path must exist to at least one possible winning cell on the target row
+- Path checking is done considering knight movement rules
 
-### ⚠️ Blocking Constraint
-- Invalid if it breaks path rule
-- If no valid block possible → must move
+### 3. Blocking Constraint
 
----
+- A blocking move is invalid if it breaks the path validity rule.
+- If it is not possible to place two valid blocks, the player must move the knight
 
-## 🔥 Fire Mechanics
+### 4. Turn Rule
 
-- Random cells contain fire at start
-- Fire cells:
-  - Cannot be entered
-  - Cannot be blocked
-  - Are symmetrically placed
-  - Never block all paths
+- Only one action per turn is allowed:
+  - Either move the knight
+  - Or block two cells
+
+### 5. Fire Rule
+
+- At the start of the game, randomly, some cells will burn in Fire
+  - No knight can move in fire
+  - No blocks can be placed here
+  - Fire will never block all paths to the winning state
+  - Fire placement will be symmetrical to both player sides
+
+- Special rule
+  - If the knight is adjacent to or in a corner of a fire cell, it must move
+
+## AI Strategy
+
+- Knight-1: Uses MiniMax Algorithm for optimal decision making.
+- Knight-2: Uses Fuzzy Logic for heuristic-based decisions.
+- Path validation is ensured using the graph traversal technique BFS.
 
 ---
 
