@@ -1,88 +1,86 @@
 # game/board.py
 
-from game.rules import GameState
+import pygame
+
+CELL_SIZE = 70
+GRID_SIZE = 9
+
+WHITE = (245, 245, 245)
+BLACK = (40, 40, 40)
+BLUE = (70, 120, 255)
+RED = (230, 80, 80)
+GRAY = (140, 140, 140)
+
+MOVE_COLOR = (100, 220, 100)
+BLOCK_COLOR = (120, 120, 255)
+SELECT_COLOR = (255, 255, 0)
 
 
 class Board:
-    def __init__(self, fire_pairs):
-        """
-        Initialize board with given fire_pairs.
-        fire_pairs = number of symmetric fire pairs (each pair = 2 cells)
-        """
-        self.size = 9
-        self.state = GameState(fire_pairs)
+    def __init__(self, screen):
+        self.screen = screen
+        self.font = pygame.font.SysFont("arial", 24)
 
-    # ----------------------------------
-    # DISPLAY BOARD
-    # ----------------------------------
+        # buttons
+        self.move_btn = pygame.Rect(50, 640, 120, 40)
+        self.block_btn = pygame.Rect(200, 640, 120, 40)
 
-    def display(self):
-        """
-        Prints the current board state.
-        B = Player 1 (Blue)
-        R = Player 2 (Red)
-        F = Fire
-        X = Block
-        . = Empty
-        """
+    def draw(self, state, mode, highlights, selected, info):
+        self.screen.fill(WHITE)
 
-        grid = [['.' for _ in range(self.size)] for _ in range(self.size)]
+        for r in range(GRID_SIZE):
+            for c in range(GRID_SIZE):
+                rect = pygame.Rect(c*CELL_SIZE, r*CELL_SIZE, CELL_SIZE, CELL_SIZE)
 
-        # Fires
-        for r, c in self.state.fires:
-            grid[r][c] = 'F'
+                pygame.draw.rect(self.screen, WHITE, rect)
+                pygame.draw.rect(self.screen, BLACK, rect, 1)
 
-        # Blocks
-        for r, c in self.state.blocks:
-            grid[r][c] = 'X'
+                # fire
+                if (r, c) in state.fires:
+                    pygame.draw.circle(self.screen, (255, 120, 0), rect.center, 20)
+                    pygame.draw.circle(self.screen, (255, 200, 0), rect.center, 10)
 
-        # Players
-        br, bc = self.state.p1
-        rr, rc = self.state.p2
+                # blocks
+                if (r, c) in state.blocks:
+                    pygame.draw.rect(self.screen, GRAY, rect)
 
-        grid[br][bc] = 'B'
-        grid[rr][rc] = 'R'
+                # highlights
+                if highlights and (r, c) in highlights:
+                    color = MOVE_COLOR if mode.startswith("move") else BLOCK_COLOR
+                    pygame.draw.rect(self.screen, color, rect, 4)
 
-        # Header
-        print("\n   " + " ".join(str(i + 1) for i in range(self.size)))
-        print("  +" + "--" * self.size + "+")
+                if selected == (r, c):
+                    pygame.draw.rect(self.screen, SELECT_COLOR, rect, 5)
 
-        # Rows
-        for i in range(self.size):
-            print(f"{i + 1:2}| " + " ".join(grid[i]) + " |")
+        # players
+        br, bc = state.p1
+        rr, rc = state.p2
 
-        print("  +" + "--" * self.size + "+\n")
+        pygame.draw.circle(self.screen, BLUE, (bc*CELL_SIZE+35, br*CELL_SIZE+35), 22)
+        pygame.draw.circle(self.screen, RED, (rc*CELL_SIZE+35, rr*CELL_SIZE+35), 22)
 
-    # ----------------------------------
-    # OPTIONAL: RESET BOARD
-    # ----------------------------------
+        self.screen.blit(self.font.render("B", True, WHITE), (bc*CELL_SIZE+25, br*CELL_SIZE+20))
+        self.screen.blit(self.font.render("R", True, WHITE), (rc*CELL_SIZE+25, rr*CELL_SIZE+20))
 
-    def reset(self, fire_pairs):
-        """
-        Reset board with new fire configuration.
-        """
-        self.state = GameState(fire_pairs)
+        # info
+        self.screen.blit(self.font.render(info, True, BLACK), (10, 5))
 
-    # ----------------------------------
-    # OPTIONAL: GET RAW GRID (for future GUI/AI)
-    # ----------------------------------
+        # buttons
+        pygame.draw.rect(self.screen, MOVE_COLOR, self.move_btn, border_radius=6)
+        pygame.draw.rect(self.screen, BLOCK_COLOR, self.block_btn, border_radius=6)
 
-    def get_grid(self):
-        """
-        Returns a 2D grid representation (useful for AI/debugging).
-        """
-        grid = [['.' for _ in range(self.size)] for _ in range(self.size)]
+        self.screen.blit(self.font.render("MOVE", True, BLACK), (65, 650))
+        self.screen.blit(self.font.render("BLOCK", True, BLACK), (215, 650))
 
-        for r, c in self.state.fires:
-            grid[r][c] = 'F'
+        pygame.display.flip()
 
-        for r, c in self.state.blocks:
-            grid[r][c] = 'X'
+    def get_cell(self, pos):
+        x, y = pos
+        return (y // CELL_SIZE, x // CELL_SIZE)
 
-        br, bc = self.state.p1
-        rr, rc = self.state.p2
-
-        grid[br][bc] = 'B'
-        grid[rr][rc] = 'R'
-
-        return grid
+    def get_button(self, pos):
+        if self.move_btn.collidepoint(pos):
+            return "move"
+        if self.block_btn.collidepoint(pos):
+            return "block"
+        return None
