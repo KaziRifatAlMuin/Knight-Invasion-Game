@@ -229,7 +229,7 @@ def start_flow():
 def main_game(fire_count, mode_idx):
     state = GameState(fire_count)
     board = Board(screen)
-    minimax_agent = MinimaxAgent(player=2, depth=2) if mode_idx == 2 else None
+    minimax_agent = MinimaxAgent(player=2, depth=6, max_block_first=8, max_block_second=5, time_limit=0.9) if mode_idx == 2 else None
 
     player = 1
     mode = "choose"
