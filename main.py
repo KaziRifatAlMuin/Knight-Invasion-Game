@@ -132,9 +132,9 @@ def show_coming_soon(mode_name):
 
 def choose_difficulty_fire_count():
     levels = [
-        ("Easy", "8-14 fires", 8, 14),
-        ("Medium", "16-22 fires", 16, 22),
-        ("Hard", "24-30 fires", 24, 30),
+        ("Easy", "4-8 fires", 4, 8),
+        ("Medium", "8-12 fires", 8, 12),
+        ("Hard", "12-16 fires", 12, 16),
     ]
 
     buttons = [

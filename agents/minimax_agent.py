@@ -19,6 +19,8 @@ class MinimaxAgent:
         self.max_block_first = max_block_first
         self.max_block_second = max_block_second
         self.time_limit = time_limit
+        # Reserved transposition table / cache. Currently not heavily used,
+        # but left here for future speedups (store evaluated positions).
         self.tt = {}
 
     # ─────────────────────────────────────────────
@@ -26,29 +28,41 @@ class MinimaxAgent:
     # ─────────────────────────────────────────────
 
     def choose_action(self, state):
-        deadline = time.perf_counter() + self.time_limit
-        root_player = self.player
+        """Choose best action for `self.player` using bounded minimax.
 
-        root_actions = self._actions(state, root_player)
-        if not root_actions:
+        Workflow:
+        1. Generate all legal actions (moves and bounded block pairs).
+        2. Iteratively deepen the search from depth=1 up to configured depth.
+           Each iteration calls the `minimax` entry point that runs alpha-beta
+           via `max_value` / `min_value` functions.
+        3. Respect a time `deadline` — if the deadline is reached a
+           SearchTimeout is raised and the best action found so far is used.
+
+        The iterative deepening pattern ensures we always return a legal
+        action even when the time limit prevents a full-depth search.
+        """
+
+        deadline = time.perf_counter() + self.time_limit
+
+        actions_list = actions(state, self.player, self.max_block_first, self.max_block_second)
+        if not actions_list:
             return None
 
-        # Instant win — take it immediately.
-        immediate_win = self._first_immediate_winning_action(state, root_player, root_actions)
-        if immediate_win is not None:
-            return immediate_win
-
-        # Filter out moves that hand opponent an instant win.
-        safe_actions = self._safe_actions(state, root_player, root_actions)
-        if safe_actions:
-            root_actions = safe_actions
-
-        best_action = root_actions[0]
+        best_action = actions_list[0]
         best_score = -math.inf
 
+        # Iterative deepening: helps provide progressively better moves and
+        # allows returning the best-so-far if time runs out.
         for search_depth in range(1, self.depth + 1):
             try:
-                score, action = self._search_root(state, root_actions, search_depth, deadline)
+                score, action = minimax(
+                    state,
+                    self.player,
+                    search_depth,
+                    self.max_block_first,
+                    self.max_block_second,
+                    deadline,
+                )
             except SearchTimeout:
                 break
 
@@ -56,343 +70,295 @@ class MinimaxAgent:
                 best_action = action
                 best_score = score
 
-            if abs(best_score) >= WIN_SCORE - 100:
-                break
-            if time.perf_counter() >= deadline:
+            # Stop early if a decisive score is found.
+            if best_score >= WIN_SCORE - 100:
                 break
 
         return best_action
 
-    # ─────────────────────────────────────────────
-    #  Root search
-    # ─────────────────────────────────────────────
 
-    def _search_root(self, state, root_actions, depth, deadline):
-        alpha = -math.inf
-        beta = math.inf
-        best_score = -math.inf
-        best_action = root_actions[0]
+def actions(state, player, max_block_first=10, max_block_second=6):
+    """
+    Returns a list of all possible actions for the current player.
+    Actions are either:
+    - ("move", (row, col))
+    - ("block", ((r1, c1), (r2, c2)))
+    """
 
-        ordered = self._order_actions(state, root_actions, self.player, depth)
+    move_actions = [("move", move) for move in state.get_moves(player)]
 
-        for action in ordered:
-            if time.perf_counter() >= deadline:
-                raise SearchTimeout
+    if state.must_move(player) or not state.block_possible():
+        return move_actions
 
-            child = self._result(state, action, self.player)
-            score = -self._negamax(child, depth - 1, -beta, -alpha,
-                                   self._other(self.player), deadline)
+    opponent = 2 if player == 1 else 1
+    opp_moves = set(state.get_moves(opponent))
+    opp_target_row = BOARD_SIZE - 1 if opponent == 1 else 0
 
-            if score > best_score:
-                best_score = score
-                best_action = action
+    first_cells = state.get_first_block_candidates(player)
 
-            alpha = max(alpha, best_score)
-            if alpha >= beta:
-                break
+    def first_priority(cell):
+        in_opp_reach = cell in opp_moves
+        row_closeness = abs(cell[0] - opp_target_row)
+        return (0 if in_opp_reach else 1, row_closeness)
 
-        return best_score, best_action
+    first_cells = sorted(first_cells, key=first_priority)
+    if max_block_first:
+        first_cells = first_cells[:max_block_first]
 
-    # ─────────────────────────────────────────────
-    #  Negamax + alpha-beta
-    # ─────────────────────────────────────────────
+    block_actions = []
+    for first in first_cells:
+        second_cells = state.get_second_block_candidates(player, first)
 
-    def _negamax(self, state, depth, alpha, beta, current_player, deadline):
-        if time.perf_counter() >= deadline:
-            raise SearchTimeout
-
-        winner = state.check_winner()
-        if winner is not None:
-            return (WIN_SCORE + depth) if winner == self.player else (-WIN_SCORE - depth)
-
-        if depth <= 0:
-            # Evaluate always from the root agent's perspective; negate for opponent.
-            raw = self._evaluate(state)
-            return raw if current_player == self.player else -raw
-
-        key = self._state_key(state, current_player, depth)
-        tt_entry = self.tt.get(key)
-        if tt_entry is not None:
-            flag, val, _ = tt_entry
-            if flag == "exact":
-                return val
-            if flag == "lower" and val >= beta:
-                return val
-            if flag == "upper" and val <= alpha:
-                return val
-
-        actions = self._actions(state, current_player)
-        if not actions:
-            raw = self._evaluate(state)
-            return raw if current_player == self.player else -raw
-
-        actions = self._order_actions(state, actions, current_player, depth)
-
-        orig_alpha = alpha
-        best_value = -math.inf
-
-        for action in actions:
-            if time.perf_counter() >= deadline:
-                raise SearchTimeout
-
-            child = self._result(state, action, current_player)
-            value = -self._negamax(child, depth - 1, -beta, -alpha,
-                                   self._other(current_player), deadline)
-
-            if value > best_value:
-                best_value = value
-            alpha = max(alpha, best_value)
-            if alpha >= beta:
-                break
-
-        # Store in transposition table with flag.
-        if best_value <= orig_alpha:
-            flag = "upper"
-        elif best_value >= beta:
-            flag = "lower"
-        else:
-            flag = "exact"
-        self.tt[key] = (flag, best_value, None)
-
-        return best_value
-
-    # ─────────────────────────────────────────────
-    #  Action generation
-    # ─────────────────────────────────────────────
-
-    def _actions(self, state, player):
-        moves = state.get_moves(player)
-        action_list = [("move", m) for m in moves]
-
-        if state.must_move(player):
-            return action_list
-        if not state.block_possible():
-            return action_list
-
-        # ── Block candidates: prioritise cells where opponent can land next ──
-        opponent = self._other(player)
-        opp_next_moves = set(state.get_moves(opponent))
-        opp_target_row = BOARD_SIZE - 1 if opponent == 1 else 0
-
-        first_cells = state.get_first_block_candidates(player)
-
-        # Score each candidate: cells reachable by opponent AND close to their
-        # target row are the most dangerous — block those first.
-        def first_priority(cell):
-            in_opp_reach = cell in opp_next_moves             # immediate threat
-            row_closeness = abs(cell[0] - opp_target_row)     # 0 = already on target
+        def second_priority(cell):
+            in_opp_reach = cell in opp_moves
+            row_closeness = abs(cell[0] - opp_target_row)
             return (0 if in_opp_reach else 1, row_closeness)
 
-        first_cells = sorted(first_cells, key=first_priority)
-        if self.max_block_first:
-            first_cells = first_cells[:self.max_block_first]
+        second_cells = sorted(second_cells, key=second_priority)
+        if max_block_second:
+            second_cells = second_cells[:max_block_second]
 
-        for first in first_cells:
-            second_cells = state.get_second_block_candidates(player, first)
+        for second in second_cells:
+            block_actions.append(("block", (first, second)))
 
-            def second_priority(cell):
-                in_opp_reach = cell in opp_next_moves
-                row_closeness = abs(cell[0] - opp_target_row)
-                return (0 if in_opp_reach else 1, row_closeness)
+    return move_actions + block_actions
 
-            second_cells = sorted(second_cells, key=second_priority)
-            if self.max_block_second:
-                second_cells = second_cells[:self.max_block_second]
 
-            for second in second_cells:
-                action_list.append(("block", (first, second)))
+def result(state, action, player):
+    """
+    Returns a new state after applying an action.
+    """
 
-        return action_list
+    child = state.clone()
+    action_type, payload = action
 
-    # ─────────────────────────────────────────────
-    #  Action ordering — called at every node
-    # ─────────────────────────────────────────────
+    if action_type == "move":
+        child.apply_move(player, payload)
+    else:
+        c1, c2 = payload
+        child.apply_block(player, c1, c2)
 
-    def _order_actions(self, state, action_list, player, depth):
-        """
-        Sort actions so alpha-beta sees the best moves first.
+    return child
 
-        Move actions  → sorted by how much they improve BFS distance to target
-                        (smaller BFS distance = better for current player).
-        Block actions → sorted by how much they increase opponent's BFS distance
-                        (larger increase = better).
-        Winning moves always come first.
-        """
-        opponent = self._other(player)
-        agent_target  = BOARD_SIZE - 1 if player == 1 else 0
-        opp_target    = BOARD_SIZE - 1 if opponent == 1 else 0
 
-        agent_pos  = state.p1 if player   == 1 else state.p2
-        opp_pos    = state.p1 if opponent == 1 else state.p2
+def terminal(state):
+    """
+    Returns True if the game is over, otherwise False.
+    """
 
-        # Pre-compute current distances (cheap BFS calls).
-        cur_agent_dist = self._knight_distance_to_row(
-            agent_pos, agent_target, opp_pos, state.blocks, state.fires)
-        cur_opp_dist = self._knight_distance_to_row(
-            opp_pos, opp_target, agent_pos, state.blocks, state.fires)
+    return state.check_winner() is not None
 
-        # TT hint.
-        tt_bonus = {}
-        for action in action_list:
-            child = self._result(state, action, player)
-            key = self._state_key(child, opponent, max(depth - 1, 0))
-            tt_bonus[id(action)] = 1 if key in self.tt else 0
 
-        def score(action):
-            action_type, payload = action
-            child = self._result(state, action, player)
+def utility(state, agent):
+    """
+    Returns:
+      1  if the agent wins
+     -1  if the opponent wins
+      0  otherwise, then a heuristic score is used for non-terminal states.
+    """
 
-            # Immediate win → absolute top priority.
-            if child.check_winner() == player:
-                return 10_000_000
+    winner = state.check_winner()
+    if winner == agent:
+        return WIN_SCORE
+    if winner is not None:
+        return -WIN_SCORE
+    return evaluate(state, agent)
 
-            new_agent_pos = child.p1 if player   == 1 else child.p2
-            new_opp_pos   = child.p1 if opponent == 1 else child.p2
 
-            if action_type == "move":
-                # How much closer did we get to our target row?
-                new_dist = self._knight_distance_to_row(
-                    new_agent_pos, agent_target, new_opp_pos,
-                    child.blocks, child.fires)
-                dist_gain = cur_agent_dist - new_dist       # positive = good
-                return dist_gain * 1000 + tt_bonus.get(id(action), 0) * 100
+def max_value(state, depth, alpha, beta, agent, max_block_first=10, max_block_second=6, deadline=None):
+    """
+        Compute the maximum utility value for the current state.
 
-            else:  # block
-                # How much did we push the opponent back?
-                new_opp_dist = self._knight_distance_to_row(
-                    new_opp_pos, opp_target, new_agent_pos,
-                    child.blocks, child.fires)
-                dist_damage = new_opp_dist - cur_opp_dist   # positive = good
-                return dist_damage * 1000 + tt_bonus.get(id(action), 0) * 100
+        This is the 'max' player in minimax. It performs alpha-beta pruning:
 
-        return sorted(action_list, key=score, reverse=True)
+        - `alpha` is the best already explored option along the path to the root
+            for the maximizer (lower bound).
+        - `beta` is the best already explored option along the path to the root
+            for the minimizer (upper bound).
 
-    # ─────────────────────────────────────────────
-    #  Evaluation function (always from self.player's POV)
-    # ─────────────────────────────────────────────
+        When we find a move with value >= beta, the minimizer above will avoid
+        this branch so we can stop exploring (beta cutoff). Likewise updates to
+        alpha tighten the bound and allow more pruning.
 
-    def _evaluate(self, state):
-        opponent = self._other(self.player)
+        The function returns (value, best_action) where `value` is the estimated
+        utility for the maximizer and `best_action` is the action achieving it.
+    """
 
-        agent_pos = state.p1 if self.player == 1 else state.p2
-        opp_pos   = state.p1 if opponent    == 1 else state.p2
+    if deadline is not None and time.perf_counter() >= deadline:
+        raise SearchTimeout
 
-        agent_target = BOARD_SIZE - 1 if self.player == 1 else 0
-        opp_target   = BOARD_SIZE - 1 if opponent    == 1 else 0
+    if terminal(state) or depth == 0:
+        return utility(state, agent), None
 
-        # ── BFS distances (most important signal) ──────────────────────────
-        agent_dist = self._knight_distance_to_row(
-            agent_pos, agent_target, opp_pos,   state.blocks, state.fires)
-        opp_dist   = self._knight_distance_to_row(
-            opp_pos,   opp_target,   agent_pos, state.blocks, state.fires)
+    value = -math.inf
+    best_action = None
 
-        # Penalise unreachable state heavily.
-        if agent_dist == 99:
-            return -WIN_SCORE + 200
-        if opp_dist == 99:
-            return  WIN_SCORE - 200
+    for action in actions(state, agent, max_block_first, max_block_second):
+        if deadline is not None and time.perf_counter() >= deadline:
+            raise SearchTimeout
 
-        # ── Tactical threat detection ──────────────────────────────────────
-        if self._has_immediate_winning_move(state, self.player):
-            return WIN_SCORE - 500
-        if self._has_immediate_winning_move(state, opponent):
-            return -WIN_SCORE + 500
+        child = result(state, action, agent)
+        child_value, _ = min_value(
+            child,
+            depth - 1,
+            alpha,
+            beta,
+            agent,
+            max_block_first,
+            max_block_second,
+            deadline,
+        )
 
-        # ── Mobility (knight moves available) ─────────────────────────────
-        agent_moves = len(state.get_moves(self.player))
-        opp_moves   = len(state.get_moves(opponent))
+        if child_value > value:
+            value = child_value
+            best_action = action
 
-        # ── Blocking power (how many first-block candidates each has) ─────
-        agent_block_power = len(state.get_first_block_candidates(self.player))
-        opp_block_power   = len(state.get_first_block_candidates(opponent))
+        alpha = max(alpha, value)
+        if alpha >= beta:
+            # Alpha-beta cutoff: no need to check remaining sibling moves.
+            break
 
-        # ── Row progress ──────────────────────────────────────────────────
-        agent_progress = self._row_progress(agent_pos, self.player)
-        opp_progress   = self._row_progress(opp_pos,   opponent)
+    return value, best_action
 
-        # ── Weighted combination ───────────────────────────────────────────
-        # Distance is the dominant term.  Everything else is a tiebreaker.
-        score = 0
-        score += (opp_dist   - agent_dist)    * 500   # BFS distance delta
-        score += (agent_progress - opp_progress) * 60  # raw row progress
-        score += (agent_moves  - opp_moves)   * 20    # mobility
-        score += (agent_block_power - opp_block_power) * 8  # blocking potential
 
-        return score
+def min_value(state, depth, alpha, beta, agent, max_block_first=10, max_block_second=6, deadline=None):
+    """
+    Compute the minimum utility value for the current state.
 
-    # ─────────────────────────────────────────────
-    #  Helpers
-    # ─────────────────────────────────────────────
+    This mirrors `max_value` but for the opponent. It minimizes the utility
+    and also uses alpha-beta pruning. When a value <= alpha is found, the
+    maximizer above will avoid this branch (alpha cutoff) and we can stop.
+    """
 
-    def _result(self, state, action, player):
-        child = state.clone()
-        action_type, payload = action
-        if action_type == "move":
-            child.apply_move(player, payload)
-        else:
-            c1, c2 = payload
-            child.apply_block(player, c1, c2)
-        return child
+    if deadline is not None and time.perf_counter() >= deadline:
+        raise SearchTimeout
 
-    def _first_immediate_winning_action(self, state, player, action_list):
-        for action in action_list:
-            child = self._result(state, action, player)
-            if child.check_winner() == player:
-                return action
-        return None
+    if terminal(state) or depth == 0:
+        return utility(state, agent), None
 
-    def _safe_actions(self, state, player, action_list):
-        opponent = self._other(player)
-        safe = []
-        for action in action_list:
-            child = self._result(state, action, player)
-            if child.check_winner() == player:
-                safe.append(action)
+    opponent = 2 if agent == 1 else 1
+    value = math.inf
+    best_action = None
+
+    for action in actions(state, opponent, max_block_first, max_block_second):
+        if deadline is not None and time.perf_counter() >= deadline:
+            raise SearchTimeout
+
+        child = result(state, action, opponent)
+        child_value, _ = max_value(
+            child,
+            depth - 1,
+            alpha,
+            beta,
+            agent,
+            max_block_first,
+            max_block_second,
+            deadline,
+        )
+
+        if child_value < value:
+            value = child_value
+            best_action = action
+
+        beta = min(beta, value)
+        if beta <= alpha:
+            # Beta cutoff: this branch cannot influence the minimizer's parent.
+            break
+
+    return value, best_action
+
+
+def bfs_distance(state, start, target_row, opponent):
+    """Return approximate shortest knight-move distance from `start` to any
+    cell on `target_row` while avoiding `blocks`, `fires`, and the `opponent`.
+
+    This BFS is a cheap heuristic used by the evaluation function to estimate
+    how close a knight is to its goal row. It is not aware of future block
+    placements; it simply measures reachability given the current obstacles.
+    """
+
+    visited = {start}
+    queue = deque([(start, 0)])
+
+    while queue:
+        (r, c), distance = queue.popleft()
+        if r == target_row:
+            return distance
+
+        for dr, dc in KNIGHT_DIRS:
+            nr, nc = r + dr, c + dc
+            if not (0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE):
                 continue
-            if not self._has_immediate_winning_move(child, opponent):
-                safe.append(action)
-        return safe
+            nxt = (nr, nc)
+            if nxt in visited or nxt in state.blocks or nxt in state.fires or nxt == opponent:
+                continue
+            visited.add(nxt)
+            queue.append((nxt, distance + 1))
 
-    def _has_immediate_winning_move(self, state, player):
-        target_row = BOARD_SIZE - 1 if player == 1 else 0
-        for move in state.get_moves(player):
-            if move[0] == target_row:
-                return True
-        return False
+    return 99
 
-    def _state_key(self, state, current_player, depth):
-        return (state.p1, state.p2,
-                tuple(sorted(state.blocks)),
-                tuple(sorted(state.fires)),
-                current_player, depth)
 
-    @staticmethod
-    def _other(player):
-        return 2 if player == 1 else 1
+def evaluate(state, agent):
+    """Heuristic evaluation of non-terminal states.
 
-    @staticmethod
-    def _row_progress(pos, player):
-        return pos[0] if player == 1 else (BOARD_SIZE - 1 - pos[0])
+    The evaluation combines several signals (ordered by importance):
+    1. BFS distance for both players (most important).
+    2. Row progress (how far along the board the knight is).
+    3. Mobility (available knight moves).
+    4. Blocking potential (how many first-block candidates are available).
 
-    @staticmethod
-    def _knight_distance_to_row(start, target_row, opponent, blocks, fires):
-        """BFS distance from `start` to any cell in `target_row`."""
-        visited = {start}
-        queue = deque([(start, 0)])
+    Positive scores favor `agent`, negative scores favor the opponent.
+    """
 
-        while queue:
-            (r, c), depth = queue.popleft()
-            if r == target_row:
-                return depth
+    opponent = 2 if agent == 1 else 1
 
-            for dr, dc in KNIGHT_DIRS:
-                nr, nc = r + dr, c + dc
-                if not (0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE):
-                    continue
-                nxt = (nr, nc)
-                if nxt in visited or nxt in blocks or nxt in fires or nxt == opponent:
-                    continue
-                visited.add(nxt)
-                queue.append((nxt, depth + 1))
+    agent_pos = state.p1 if agent == 1 else state.p2
+    opp_pos = state.p1 if opponent == 1 else state.p2
 
-        return 99  # unreachable
+    agent_target = BOARD_SIZE - 1 if agent == 1 else 0
+    opp_target = BOARD_SIZE - 1 if opponent == 1 else 0
+
+    agent_dist = bfs_distance(state, agent_pos, agent_target, opp_pos)
+    opp_dist = bfs_distance(state, opp_pos, opp_target, agent_pos)
+
+    if agent_dist == 99:
+        return -WIN_SCORE + 200
+    if opp_dist == 99:
+        return WIN_SCORE - 200
+
+    agent_moves = len(state.get_moves(agent))
+    opp_moves = len(state.get_moves(opponent))
+
+    agent_block_power = len(state.get_first_block_candidates(agent)) if not state.must_move(agent) else 0
+    opp_block_power = len(state.get_first_block_candidates(opponent)) if not state.must_move(opponent) else 0
+
+    agent_progress = agent_pos[0] if agent == 1 else (BOARD_SIZE - 1 - agent_pos[0])
+    opp_progress = opp_pos[0] if opponent == 1 else (BOARD_SIZE - 1 - opp_pos[0])
+
+    score = 0
+    score += (opp_dist - agent_dist) * 500
+    score += (agent_progress - opp_progress) * 60
+    score += (agent_moves - opp_moves) * 20
+    score += (agent_block_power - opp_block_power) * 8
+
+    return score
+
+
+def minimax(state, agent, depth=6, max_block_first=10, max_block_second=6, deadline=None):
+    """
+    Returns the best (value, action) for the current player.
+    """
+
+    if deadline is not None and time.perf_counter() >= deadline:
+        raise SearchTimeout
+
+    return max_value(
+        state,
+        depth,
+        -math.inf,
+        math.inf,
+        agent,
+        max_block_first,
+        max_block_second,
+        deadline,
+    )
