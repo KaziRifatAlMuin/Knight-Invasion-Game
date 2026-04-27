@@ -186,6 +186,27 @@ Fuzzy AI
 
 ---
 
+## 🎮 Current Play Modes
+
+- ✅ 2 Player (fully playable)
+- ⏳ Player vs Fuzzy Agent (Coming Soon)
+- ⏳ Player vs Minimax Agent (Coming Soon)
+- ⏳ Minimax Agent vs Fuzzy Agent (Coming Soon)
+
+---
+
+## 🔥 Difficulty Fire Ranges
+
+When starting a new 2-player game, difficulty controls total fire cells:
+
+- Easy: 8-14 fire cells
+- Medium: 16-22 fire cells
+- Hard: 24-30 fire cells
+
+Fire remains symmetrically generated and safe so both players keep at least one valid path.
+
+---
+
 ## 📜 License
 
 This project is developed for academic purposes under  

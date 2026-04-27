@@ -134,11 +134,13 @@ def exists_valid_block(blocks, fires, p1, p2):
 # FIRE GENERATION (SAFE)
 # ----------------------------------
 
-def generate_symmetric_fire_safe(p1, p2, num_pairs=3):
+def generate_symmetric_fire_safe(p1, p2, fire_count=10):
+    pair_count = max(1, fire_count // 2)
+
     while True:
         fires = set()
 
-        while len(fires) < num_pairs * 2:
+        while len(fires) < pair_count * 2:
             r = random.randint(1, BOARD_SIZE // 2 - 1)
             c = random.randint(0, BOARD_SIZE - 1)
 
@@ -160,12 +162,12 @@ def generate_symmetric_fire_safe(p1, p2, num_pairs=3):
 # ----------------------------------
 
 class GameState:
-    def __init__(self, fire_pairs=3):
+    def __init__(self, fire_count=10):
         self.p1 = (0, 4)
         self.p2 = (8, 4)
 
         self.blocks = set()
-        self.fires = generate_symmetric_fire_safe(self.p1, self.p2, fire_pairs)
+        self.fires = generate_symmetric_fire_safe(self.p1, self.p2, fire_count)
 
     def clone(self):
         return copy.deepcopy(self)
@@ -196,6 +198,44 @@ class GameState:
 
     def block_possible(self):
         return exists_valid_block(self.blocks, self.fires, self.p1, self.p2)
+
+    def get_open_cells(self):
+        return [
+            (r, c)
+            for r in range(BOARD_SIZE)
+            for c in range(BOARD_SIZE)
+            if (r, c) not in self.blocks
+            and (r, c) not in self.fires
+            and (r, c) != self.p1
+            and (r, c) != self.p2
+        ]
+
+    def get_first_block_candidates(self, player):
+        if self.must_move(player):
+            return []
+
+        candidates = []
+        open_cells = self.get_open_cells()
+
+        for first in open_cells:
+            for second in open_cells:
+                if first == second:
+                    continue
+                if self.can_block(player, first, second):
+                    candidates.append(first)
+                    break
+
+        return candidates
+
+    def get_second_block_candidates(self, player, first):
+        if first is None or self.must_move(player):
+            return []
+
+        return [
+            cell
+            for cell in self.get_open_cells()
+            if cell != first and self.can_block(player, first, cell)
+        ]
 
     # ----------------------------------
     # APPLY ACTIONS
