@@ -150,7 +150,7 @@ class Board:
         text = self.info_font.render(label, True, (255, 255, 255))
         self.screen.blit(text, (center[0] - text.get_width() // 2, center[1] - text.get_height() // 2 - 1))
 
-    def draw(self, state, mode, highlights, selected, info, can_block, must_move):
+    def draw(self, state, mode, highlights, selected, info, can_block, must_move, role_items=None, focus_text="", focus_color=None):
         self._draw_board_background()
         self._draw_goal_markers()
         t = pygame.time.get_ticks()
@@ -215,9 +215,9 @@ class Board:
         self.screen.blit(hint_text, (panel_rect.x + 16, panel_rect.y + 74))
 
         legend_y = panel_rect.y + 118
-        legend_items = [
-            (BLUE, "Blue Knight"),
-            (RED, "Red Knight"),
+        legend_items = role_items if role_items is not None else [
+            (BLUE, "Blue Knight: Player"),
+            (RED, "Red Knight: Player"),
         ]
         for i, (color, label) in enumerate(legend_items):
             yy = legend_y + i * 30
@@ -227,6 +227,16 @@ class Board:
 
         rule_text = self.small_font.render("Move or block two cells", True, TEXT_MUTED)
         self.screen.blit(rule_text, (panel_rect.x + 16, panel_rect.bottom - 32))
+
+        if focus_text:
+            badge_rect = pygame.Rect(SIDEBAR_X + 12, SIDEBAR_Y + 500, SIDEBAR_WIDTH - 24, 56)
+            pygame.draw.rect(self.screen, (12, 20, 36), badge_rect, border_radius=12)
+            pygame.draw.rect(self.screen, focus_color if focus_color else NEON_CYAN, badge_rect, 2, border_radius=12)
+            badge_text = self.small_font.render(focus_text, True, TEXT_MAIN)
+            self.screen.blit(
+                badge_text,
+                (badge_rect.centerx - badge_text.get_width() // 2, badge_rect.centery - badge_text.get_height() // 2),
+            )
 
         move_active = mode.startswith("move")
         block_active = mode.startswith("block")
