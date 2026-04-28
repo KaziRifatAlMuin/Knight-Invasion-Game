@@ -199,9 +199,9 @@ Fuzzy AI
 
 When starting a new 2-player game, difficulty controls total fire cells:
 
-- Easy: 8-14 fire cells
-- Medium: 16-22 fire cells
-- Hard: 24-30 fire cells
+- Easy: 4-8 fire cells
+- Medium: 8-12 fire cells
+- Hard: 12-16 fire cells
 
 Fire remains symmetrically generated and safe so both players keep at least one valid path.
 
