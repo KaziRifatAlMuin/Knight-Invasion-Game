@@ -1,7 +1,6 @@
 # agents/fuzzy_agent.py
 
 from collections import deque
-import random
 from typing import List, Tuple, Optional, Set, Dict, Any
 
 BOARD_SIZE = 9
@@ -59,7 +58,6 @@ class FuzzyAgent:
         # FIS components
         self._init_fuzzy_sets()
         self._init_fuzzy_rules()
-        self._init_advanced_rules()
 
         print("\n" + "=" * 70)
         print("🔴 ENHANCED FUZZY AGENT with ADVANCED AI")
@@ -115,10 +113,6 @@ class FuzzyAgent:
             'opponent_ahead_much': (-8, -6, -3), 'opponent_ahead': (-5, -3, -1),
             'tied': (-2, 0, 2), 'me_ahead': (1, 3, 5), 'me_ahead_much': (3, 6, 8),
         }
-        self.fire_risk_sets = {
-            'safe': (0, 0, 0.2), 'low': (0.1, 0.3, 0.5),
-            'medium': (0.4, 0.6, 0.8), 'high': (0.7, 0.9, 1.0), 'critical': (0.9, 1.0, 1.0),
-        }
         self.output_sets = {
             'must_move': (0, 0, 2), 'prefer_move': (1, 3, 5),
             'balanced': (3, 5, 7), 'prefer_block': (5, 7, 9), 'must_block': (8, 10, 10),
@@ -155,35 +149,6 @@ class FuzzyAgent:
             {'name': 'Very close to goal - MUST MOVE',
              'antecedents': [('distance', 'very_close')],
              'consequent': ('action', 'must_move'), 'weight': 1.0},
-        ]
-        
-    def _init_advanced_rules(self):
-        """Additional rules for enhanced decision making"""
-        self.advanced_rules = [
-            {
-                'name': 'Fire danger - DEFENSIVE MOVE',
-                'condition': lambda s: s['fire_risk'] > 0.7,
-                'action': 'avoid_fire',
-                'priority': 2
-            },
-            {
-                'name': 'Choke point control',
-                'condition': lambda s: s['in_choke_point'] and s['can_control'],
-                'action': 'control_choke',
-                'priority': 1
-            },
-            {
-                'name': 'Predict opponent path',
-                'condition': lambda s: s['opponent_predictable'],
-                'action': 'predictive_block',
-                'priority': 3
-            },
-            {
-                'name': 'Strategic retreat',
-                'condition': lambda s: s['danger'] > 0.8 and s['my_progress'] < 0.3,
-                'action': 'retreat',
-                'priority': 4
-            }
         ]
 
     def _triangular_membership(self, x, a, b, c):
@@ -426,7 +391,6 @@ class FuzzyAgent:
         blocks = state.blocks
         fires = state.fires
         my_pos = state.p2
-        opp_goal = BOARD_SIZE - 1
         
         # Get all positions that can reach the target
         reaching_positions = []
@@ -447,14 +411,11 @@ class FuzzyAgent:
         
         return None
     
-    def find_strategic_retreat(self, my_pos: Tuple[int, int], state) -> Optional[Tuple[int, int]]:
+    def find_strategic_retreat(self, my_pos: Tuple[int, int], blocks: Set, 
+                               fires: Set, opp_pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
         """
         Find safe retreat when danger is high
         """
-        blocks = state.blocks
-        fires = state.fires
-        opp_pos = state.p1
-        
         all_moves = self.get_knight_moves(my_pos, blocks, fires, opp_pos)
         if not all_moves:
             return None
@@ -481,35 +442,6 @@ class FuzzyAgent:
     # PATH DIVERSITY
     # =========================================================
     
-    def get_alternative_paths(self, start: Tuple[int, int], goal_row: int, 
-                             blocks: Set, fires: Set, opponent: Tuple[int, int], 
-                             num_paths: int = 3) -> List[List[Tuple[int, int]]]:
-        """
-        Find multiple alternative paths to goal for path diversity
-        """
-        # Cache key
-        cache_key = (start, goal_row, frozenset(blocks), frozenset(fires))
-        if cache_key in self.alternative_paths:
-            return self.alternative_paths[cache_key][:num_paths]
-        
-        # Find different routes by slightly modifying the search
-        paths = []
-        
-        # Standard BFS for primary path
-        primary = self.get_bfs_path(start, goal_row, blocks, fires, opponent)
-        if primary:
-            paths.append(primary)
-        
-        # Modified BFS with different tie-breaking
-        for tie_breaker in ['row_first', 'col_first', 'center_biased']:
-            alt_path = self.get_modified_bfs_path(start, goal_row, blocks, fires, 
-                                                  opponent, tie_breaker)
-            if alt_path and alt_path not in paths:
-                paths.append(alt_path)
-        
-        self.alternative_paths[cache_key] = paths
-        return paths[:num_paths]
-    
     def get_bfs_path(self, start: Tuple[int, int], target_row: int,
                     blocks: Set, fires: Set, opponent: Tuple[int, int]) -> Optional[List[Tuple[int, int]]]:
         """Get actual BFS path (not just distance)"""
@@ -523,46 +455,6 @@ class FuzzyAgent:
             (r, c), path = queue.popleft()
             
             for dr, dc in KNIGHT_DIRS:
-                nr, nc = r + dr, c + dc
-                if self._is_valid_cell(nr, nc, blocks, fires, opponent, start):
-                    nxt = (nr, nc)
-                    if nxt not in visited:
-                        if nr == target_row:
-                            return path + [nxt]
-                        visited.add(nxt)
-                        queue.append((nxt, path + [nxt]))
-        
-        return None
-    
-    def get_modified_bfs_path(self, start: Tuple[int, int], target_row: int,
-                              blocks: Set, fires: Set, opponent: Tuple[int, int],
-                              bias: str) -> Optional[List[Tuple[int, int]]]:
-        """Get BFS path with different move ordering bias"""
-        # Create ordered move list based on bias
-        ordered_moves = []
-        
-        for dr, dc in KNIGHT_DIRS:
-            if bias == 'row_first':
-                # Prioritize moves that change row
-                ordered_moves.append((dr, dc, abs(dr)))
-            elif bias == 'col_first':
-                # Prioritize column changes
-                ordered_moves.append((dr, dc, abs(dc)))
-            else:  # center_biased
-                # Prefer moving toward center
-                nr, nc = start[0] + dr, start[1] + dc
-                center_dist = abs(nc - 4)  # Board center at column 4
-                ordered_moves.append((dr, dc, -center_dist))
-        
-        ordered_moves.sort(key=lambda x: x[2], reverse=True)
-        
-        visited = {start}
-        queue = deque([(start, [start])])
-        
-        while queue:
-            (r, c), path = queue.popleft()
-            
-            for dr, dc, _ in ordered_moves:
                 nr, nc = r + dr, c + dc
                 if self._is_valid_cell(nr, nc, blocks, fires, opponent, start):
                     nxt = (nr, nc)
@@ -640,8 +532,7 @@ class FuzzyAgent:
         
         # Strategic retreat if danger is critical
         if current_danger > 0.8:
-            retreat = self.find_strategic_retreat(my_pos, 
-                type('State', (), {'blocks': blocks, 'fires': fires, 'p1': opponent_pos})())
+            retreat = self.find_strategic_retreat(my_pos, blocks, fires, opponent_pos)
             if retreat:
                 print(f"   🏃 STRATEGIC RETREAT: danger={current_danger:.2f}")
                 return retreat
@@ -674,7 +565,6 @@ class FuzzyAgent:
             choke_bonus = 0.3 if move in self.choke_points else 0
             
             # Combine scores (lower is better)
-            # BFS distance is primary, but we consider other factors
             score = bfs_dist * 1.0 - progress * 0.5 - strategic_value * 0.3 - diversity_bonus - choke_bonus + fire_danger * 2.0
             
             return score
@@ -848,6 +738,8 @@ class FuzzyAgent:
         # Update learning
         self.update_opponent_patterns(opp_pos)
         self.fire_cell_memory.append(fires)
+        if len(self.fire_cell_memory) > 10:
+            self.fire_cell_memory.pop(0)
 
         print(f"\n{'=' * 70}")
         print(f"🔴 ENHANCED FUZZY AGENT - TURN {self.turn_count}")
