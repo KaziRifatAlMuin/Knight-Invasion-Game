@@ -262,3 +262,85 @@ class FuzzyAgent:
             cell not in blocks and cell not in fires
             and cell != my_pos and cell != opp_pos
         )
+    
+
+
+    def find_best_blocks_to_defend(self, state, player, opp_pos):
+        """
+        Find block pair (c1, c2) targeting cells the opponent most wants to
+        move to, maximizing BFS detour imposed.
+
+        TIER 1 - both cells from opponent's best immediate next moves
+        TIER 2 - opponent's best next move + best 2-hop support cell
+        TIER 3 - fallback: any valid pair from combined 1-hop + 2-hop pool
+        """
+        blocks = state.blocks
+        fires = state.fires
+        my_pos = state.p2
+        opp_goal = BOARD_SIZE - 1
+
+        baseline = self.bfs_shortest_path(opp_pos, opp_goal, blocks, fires, my_pos)
+        if baseline >= 999:
+            return None
+
+        ranked_next = self.rank_opponent_next_moves(
+            opp_pos, opp_goal, blocks, fires, my_pos)
+        two_hop = sorted(
+            self._two_hop_cells(opp_pos, blocks, fires, my_pos),
+            key=lambda m: self.bfs_shortest_path(m, opp_goal, blocks, fires, my_pos)
+        )
+
+        def eval_pair(c1, c2):
+            if not self._is_placeable(c1, blocks, fires, my_pos, opp_pos):
+                return -1
+            if not self._is_placeable(c2, blocks, fires, my_pos, opp_pos):
+                return -1
+            if c1 == c2:
+                return -1
+            if not state.can_block(player, c1, c2):
+                return -1
+            new_dist = self.bfs_shortest_path(
+                opp_pos, opp_goal, blocks | {c1, c2}, fires, my_pos)
+            return new_dist - baseline
+
+        best_pair = None
+        best_gain = 0
+
+        # Tier 1: both cells from opponent's immediate next moves
+        for i in range(len(ranked_next)):
+            for j in range(i + 1, len(ranked_next)):
+                gain = eval_pair(ranked_next[i], ranked_next[j])
+                if gain > best_gain:
+                    best_gain = gain
+                    best_pair = (ranked_next[i], ranked_next[j])
+
+        if best_pair:
+            return list(best_pair)
+
+        # Tier 2: best next-move anchor + best 2-hop support
+        for anchor in ranked_next:
+            for support in two_hop:
+                gain = eval_pair(anchor, support)
+                if gain > best_gain:
+                    best_gain = gain
+                    best_pair = (anchor, support)
+            if best_pair:
+                break
+
+        if best_pair:
+            return list(best_pair)
+
+        # Tier 3: fallback over full combined pool
+        combined = ranked_next + [c for c in two_hop if c not in ranked_next]
+        combined = combined[:24]
+        for i in range(len(combined)):
+            for j in range(i + 1, len(combined)):
+                gain = eval_pair(combined[i], combined[j])
+                if gain > best_gain:
+                    best_gain = gain
+                    best_pair = (combined[i], combined[j])
+
+        if best_pair:
+            return list(best_pair)
+
+        return None
