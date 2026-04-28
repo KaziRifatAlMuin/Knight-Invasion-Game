@@ -95,3 +95,53 @@ class FuzzyAgent:
              'antecedents': [('distance', 'very_close')],
              'consequent': ('action', 'must_move'), 'weight': 1.0},
         ]
+
+
+
+    def _triangular_membership(self, x, a, b, c):
+        if x <= a or x >= c:
+            return 0.0
+        if a < x <= b:
+            return (x - a) / (b - a) if b != a else 1.0
+        return (c - x) / (c - b) if c != b else 1.0
+
+    def _fuzzify(self, value, fuzzy_sets):
+        return {
+            term: self._triangular_membership(value, a, b, c)
+            for term, (a, b, c) in fuzzy_sets.items()
+        }
+
+    def _evaluate_rules(self, f_race, f_distance, f_opponent):
+        output = {k: 0.0 for k in self.output_sets}
+        for rule in self.rules:
+            strengths = []
+            for var_type, term in rule['antecedents']:
+                if var_type == 'race':
+                    strengths.append(f_race.get(term, 0))
+                elif var_type == 'distance':
+                    strengths.append(f_distance.get(term, 0))
+                elif var_type == 'opponent_dist':
+                    strengths.append(f_opponent.get(term, 0))
+            strength = min(strengths) * rule['weight'] if strengths else 0
+            key = rule['consequent'][1]
+            output[key] = max(output[key], strength)
+        return output
+
+    def _defuzzify(self, output):
+        centers = {
+            'must_move': 1.0, 'prefer_move': 3.0, 'balanced': 5.0,
+            'prefer_block': 7.0, 'must_block': 9.0,
+        }
+        num = den = 0.0
+        for term, strength in output.items():
+            if strength > 0:
+                num += strength * centers[term]
+                den += strength
+        return num / den if den > 0 else 5.0
+
+    def _get_action(self, value):
+        if value <= 2.5:   return 'must_move'
+        if value <= 4.5:   return 'prefer_move'
+        if value <= 6.5:   return 'balanced'
+        if value <= 8.5:   return 'prefer_block'
+        return 'must_block'
