@@ -1,4 +1,3 @@
-# agents/fuzzy_agent.py - Part 1: Class Structure, Constants, and Initialization
 
 from collections import deque
 
@@ -47,3 +46,22 @@ class FuzzyAgent:
         print("   Fire avoidance: strict 8-directional adjacency")
         print(f"   Blocking threshold: {self.BLOCK_THRESHOLD} moves from goal")
         print("=" * 70 + "\n")
+
+
+    def _init_fuzzy_sets(self):
+        self.distance_sets = {
+            'very_close': (0, 0, 2), 'close': (1, 2, 4),
+            'medium': (3, 5, 7), 'far': (5, 7, 8), 'very_far': (7, 8, 8),
+        }
+        self.opponent_dist_sets = {
+            'critical': (0, 0, 2), 'dangerous': (1, 3, 5),
+            'moderate': (3, 5, 7), 'safe': (5, 7, 8), 'very_safe': (6, 8, 8),
+        }
+        self.race_sets = {
+            'opponent_ahead_much': (-8, -6, -3), 'opponent_ahead': (-5, -3, -1),
+            'tied': (-2, 0, 2), 'me_ahead': (1, 3, 5), 'me_ahead_much': (3, 6, 8),
+        }
+        self.output_sets = {
+            'must_move': (0, 0, 2), 'prefer_move': (1, 3, 5),
+            'balanced': (3, 5, 7), 'prefer_block': (5, 7, 9), 'must_block': (8, 10, 10),
+        }
