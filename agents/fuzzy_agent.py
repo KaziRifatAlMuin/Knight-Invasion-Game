@@ -223,3 +223,42 @@ class FuzzyAgent:
 
         print("   WARNING: ALL legal moves are fire-adjacent - forced to accept risk")
         return min(all_moves, key=bfs_score)
+    
+
+
+    def get_opponent_next_moves(self, opp_pos, blocks, fires, my_pos):
+        return self.get_knight_moves(opp_pos, blocks, fires, my_pos)
+
+    def get_opponent_winning_moves(self, opp_pos, blocks, fires, my_pos):
+        opp_goal = BOARD_SIZE - 1
+        return [
+            m for m in self.get_knight_moves(opp_pos, blocks, fires, my_pos)
+            if m[0] == opp_goal
+        ]
+
+    def rank_opponent_next_moves(self, opp_pos, opp_goal, blocks, fires, my_pos):
+        """
+        Opponent's immediate (1-hop) moves sorted best-to-worst for opponent.
+        Lowest post-move BFS = best move for them = highest block priority.
+        """
+        next_moves = self.get_knight_moves(opp_pos, blocks, fires, my_pos)
+        return sorted(
+            next_moves,
+            key=lambda m: self.bfs_shortest_path(m, opp_goal, blocks, fires, my_pos)
+        )
+
+    def _two_hop_cells(self, opp_pos, blocks, fires, my_pos):
+        """Cells the opponent can reach in exactly 2 knight moves."""
+        one_hop = set(self.get_knight_moves(opp_pos, blocks, fires, my_pos))
+        two_hop = set()
+        for mid in one_hop:
+            for cell in self.get_knight_moves(mid, blocks, fires, my_pos):
+                if cell != opp_pos and cell not in one_hop:
+                    two_hop.add(cell)
+        return list(two_hop)
+
+    def _is_placeable(self, cell, blocks, fires, my_pos, opp_pos):
+        return (
+            cell not in blocks and cell not in fires
+            and cell != my_pos and cell != opp_pos
+        )
