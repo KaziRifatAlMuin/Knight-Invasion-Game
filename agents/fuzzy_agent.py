@@ -194,3 +194,32 @@ class FuzzyAgent:
                         visited.add(nxt)
                         queue.append((nxt, dist + 1))
         return 999
+
+
+
+    def get_best_move_toward_goal(self, my_pos, my_goal, blocks, fires, opponent_pos):
+        """
+        Two-pass move selector - fire-safe cells always win over fire-adjacent ones.
+
+        PASS 1 - score only fire-safe moves by BFS distance to goal.
+                  Return best safe move if any exist.
+
+        PASS 2 - only if ZERO safe moves available: accept fire-adjacent moves,
+                  pick best BFS score among them, print a warning.
+        """
+        all_moves = self.get_knight_moves(my_pos, blocks, fires, opponent_pos)
+        if not all_moves:
+            return None
+
+        safe_moves = self.filter_fire_safe_moves(all_moves, fires)
+
+        def bfs_score(move):
+            bfs = self.bfs_shortest_path(move, my_goal, blocks, fires, opponent_pos)
+            progress = my_pos[0] - move[0]
+            return (bfs, -progress)
+
+        if safe_moves:
+            return min(safe_moves, key=bfs_score)
+
+        print("   WARNING: ALL legal moves are fire-adjacent - forced to accept risk")
+        return min(all_moves, key=bfs_score)
