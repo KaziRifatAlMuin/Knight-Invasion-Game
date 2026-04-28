@@ -366,3 +366,127 @@ class FuzzyAgent:
             if novel_any:
                 return novel_any[0]
         return None
+    
+
+
+
+    def decide_action(self, state, player):
+        self.turn_count += 1
+
+        my_pos = state.p2
+        opp_pos = state.p1
+        blocks = state.blocks
+        fires = state.fires
+        my_goal = 0
+        opp_goal = BOARD_SIZE - 1
+
+        print(f"\n{'=' * 70}")
+        print(f"FUZZY AGENT - TURN {self.turn_count}")
+        print(f"{'=' * 70}")
+        print(f"   My Position : {my_pos} | Opponent: {opp_pos}")
+
+        # Priority 0: MUST MOVE (currently adjacent to fire)
+        if state.must_move(player):
+            print("   MUST MOVE - currently adjacent to fire")
+            move = self.get_best_move_toward_goal(my_pos, my_goal, blocks, fires, opp_pos)
+            if move:
+                tag = "safe" if not self.is_cell_adjacent_to_fire(move, fires) else "still near fire"
+                print(f"   FIRE ESCAPE: {my_pos} -> {move} ({tag})")
+                self.first_move_done = True
+                return ('move', move)
+
+        # First move
+        if not self.first_move_done:
+            move = self.get_best_move_toward_goal(my_pos, my_goal, blocks, fires, opp_pos)
+            if move:
+                self.first_move_done = True
+                tag = "safe" if not self.is_cell_adjacent_to_fire(move, fires) else "near fire"
+                print(f"   FIRST MOVE: {my_pos} -> {move} ({tag})")
+                return ('move', move)
+
+        # Loop detection
+        loop_move = self.check_and_break_loop(my_pos, blocks, fires, opp_pos)
+        if loop_move:
+            tag = "safe" if not self.is_cell_adjacent_to_fire(loop_move, fires) else "near fire"
+            print(f"   LOOP BREAK {tag}: {my_pos} -> {loop_move}")
+            return ('move', loop_move)
+
+        # BFS race analysis
+        my_moves = self.bfs_shortest_path(my_pos, my_goal, blocks, fires, opp_pos)
+        opp_moves = self.bfs_shortest_path(opp_pos, opp_goal, blocks, fires, my_pos)
+
+        print(f"\n   BFS RACE:")
+        print(f"      RED (me) needs {my_moves} moves -> row 0")
+        print(f"      BLUE (opp) needs {opp_moves} moves -> row 8")
+
+        opponent_near_goal = opp_moves <= self.BLOCK_THRESHOLD
+        if opponent_near_goal:
+            print(f"      OPPONENT WITHIN {opp_moves} MOVES OF GOAL!")
+        if opp_moves < my_moves:
+            print(f"      OPPONENT AHEAD by {my_moves - opp_moves} moves!")
+
+        # Priority 1: WIN NOW
+        all_my_moves = self.get_knight_moves(my_pos, blocks, fires, opp_pos)
+        win_moves = [m for m in all_my_moves if m[0] == my_goal]
+        safe_win = self.filter_fire_safe_moves(win_moves, fires)
+
+        if safe_win:
+            print(f"\n   WINNING MOVE (safe): {my_pos} -> {safe_win[0]}")
+            return ('move', safe_win[0])
+        if win_moves:
+            print(f"\n   WINNING MOVE (fire risk accepted): {my_pos} -> {win_moves[0]}")
+            return ('move', win_moves[0])
+
+        # FIS evaluation
+        race_adv = opp_moves - my_moves
+        f_race = self._fuzzify(race_adv, self.race_sets)
+        f_dist = self._fuzzify(my_moves, self.distance_sets)
+        f_opp = self._fuzzify(opp_moves, self.opponent_dist_sets)
+        rule_output = self._evaluate_rules(f_race, f_dist, f_opp)
+        crisp = self._defuzzify(rule_output)
+        action_pref = self._get_action(crisp)
+
+        print(f"\n   FIS OUTPUT: {action_pref} (crisp={crisp:.2f})")
+
+        # Core decision
+        should_block = (opp_moves < my_moves or opponent_near_goal)
+
+        if should_block:
+            reason = (f"opponent within {opp_moves} moves of goal"
+                      if opponent_near_goal else "opponent ahead in race")
+            print(f"\n   DECISION: BLOCK ({reason})")
+
+            blocks_pair = self.find_best_blocks_to_defend(state, player, opp_pos)
+            if blocks_pair and len(blocks_pair) >= 2:
+                if state.can_block(player, blocks_pair[0], blocks_pair[1]):
+                    print(f"   BLOCKING: {blocks_pair[0]}, {blocks_pair[1]}")
+                    return ('block', (blocks_pair[0], blocks_pair[1]))
+
+            print("   No valid block found - moving instead")
+        else:
+            reason = "I'm ahead" if my_moves < opp_moves else "race tied"
+            print(f"\n   DECISION: MOVE ({reason})")
+
+        # Move (fire-safe first, BFS-optimal)
+        best_move = self.get_best_move_toward_goal(my_pos, my_goal, blocks, fires, opp_pos)
+        if best_move:
+            direction = ("UP" if best_move[0] < my_pos[0]
+                         else "DOWN" if best_move[0] > my_pos[0]
+                         else "SAME ROW")
+            tag = "safe" if not self.is_cell_adjacent_to_fire(best_move, fires) else "near fire"
+            print(f"   MOVING {direction} {tag}: {my_pos} -> {best_move}")
+            return ('move', best_move)
+
+        # Absolute fallback
+        print("   FALLBACK")
+        moves = self.get_knight_moves(my_pos, blocks, fires, opp_pos)
+        if moves:
+            safe = self.filter_fire_safe_moves(moves, fires) or moves
+            best = min(safe, key=lambda m: self.bfs_shortest_path(
+                m, my_goal, blocks, fires, opp_pos))
+            tag = "safe" if not self.is_cell_adjacent_to_fire(best, fires) else "near fire"
+            print(f"   FALLBACK MOVE {tag}: {my_pos} -> {best}")
+            return ('move', best)
+
+        print("   NO LEGAL ACTION!")
+        return ('wait', None)
