@@ -344,3 +344,25 @@ class FuzzyAgent:
             return list(best_pair)
 
         return None
+    
+
+
+    def check_and_break_loop(self, my_pos, blocks, fires, opponent_pos):
+        self.position_history.append(my_pos)
+        if len(self.position_history) > 8:
+            self.position_history.pop(0)
+
+        if (len(self.position_history) >= 4
+                and len(set(self.position_history[-4:])) <= 2):
+            print("   LOOP DETECTED - forcing escape")
+            all_moves = self.get_knight_moves(my_pos, blocks, fires, opponent_pos)
+            safe_moves = self.filter_fire_safe_moves(all_moves, fires)
+            pool = safe_moves if safe_moves else all_moves
+            novel = [m for m in pool if m not in self.position_history[-3:]]
+            if novel:
+                return min(novel, key=lambda m: self.bfs_shortest_path(
+                    m, 0, blocks, fires, opponent_pos))
+            novel_any = [m for m in all_moves if m not in self.position_history[-3:]]
+            if novel_any:
+                return novel_any[0]
+        return None
