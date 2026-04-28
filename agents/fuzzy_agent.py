@@ -145,3 +145,52 @@ class FuzzyAgent:
         if value <= 6.5:   return 'balanced'
         if value <= 8.5:   return 'prefer_block'
         return 'must_block'
+    
+
+
+    def is_cell_adjacent_to_fire(self, pos, fires):
+        if not fires:
+            return False
+        r, c = pos
+        for dr, dc in ADJACENT_DIRS:
+            if (r + dr, c + dc) in fires:
+                return True
+        return False
+
+    def filter_fire_safe_moves(self, moves, fires):
+        return [m for m in moves if not self.is_cell_adjacent_to_fire(m, fires)]
+
+
+    def _is_valid_cell(self, r, c, blocks, fires, opponent):
+        return (
+            0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE
+            and (r, c) not in blocks
+            and (r, c) not in fires
+            and (r, c) != opponent
+        )
+
+    def get_knight_moves(self, pos, blocks, fires, opponent):
+        r, c = pos
+        return [
+            (r + dr, c + dc)
+            for dr, dc in KNIGHT_DIRS
+            if self._is_valid_cell(r + dr, c + dc, blocks, fires, opponent)
+        ]
+
+    def bfs_shortest_path(self, start, target_row, blocks, fires, opponent):
+        if start[0] == target_row:
+            return 0
+        visited = {start}
+        queue = deque([(start, 0)])
+        while queue:
+            (r, c), dist = queue.popleft()
+            for dr, dc in KNIGHT_DIRS:
+                nr, nc = r + dr, c + dc
+                if self._is_valid_cell(nr, nc, blocks, fires, opponent):
+                    nxt = (nr, nc)
+                    if nxt not in visited:
+                        if nr == target_row:
+                            return dist + 1
+                        visited.add(nxt)
+                        queue.append((nxt, dist + 1))
+        return 999
