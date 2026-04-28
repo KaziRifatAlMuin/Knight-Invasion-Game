@@ -65,3 +65,33 @@ class FuzzyAgent:
             'must_move': (0, 0, 2), 'prefer_move': (1, 3, 5),
             'balanced': (3, 5, 7), 'prefer_block': (5, 7, 9), 'must_block': (8, 10, 10),
         }
+
+
+
+    def _init_fuzzy_rules(self):
+        self.rules = [
+            {'name': 'Opponent much ahead - MUST BLOCK',
+             'antecedents': [('race', 'opponent_ahead_much')],
+             'consequent': ('action', 'must_block'), 'weight': 1.0},
+            {'name': 'Opponent ahead - PREFER BLOCK',
+             'antecedents': [('race', 'opponent_ahead')],
+             'consequent': ('action', 'prefer_block'), 'weight': 0.95},
+            {'name': 'Tied race - BALANCED',
+             'antecedents': [('race', 'tied')],
+             'consequent': ('action', 'balanced'), 'weight': 0.7},
+            {'name': 'Me ahead - PREFER MOVE',
+             'antecedents': [('race', 'me_ahead')],
+             'consequent': ('action', 'prefer_move'), 'weight': 0.95},
+            {'name': 'Me much ahead - MUST MOVE',
+             'antecedents': [('race', 'me_ahead_much')],
+             'consequent': ('action', 'must_move'), 'weight': 1.0},
+            {'name': 'Opponent critical - MUST BLOCK',
+             'antecedents': [('opponent_dist', 'critical')],
+             'consequent': ('action', 'must_block'), 'weight': 1.0},
+            {'name': 'Opponent dangerous - PREFER BLOCK',
+             'antecedents': [('opponent_dist', 'dangerous')],
+             'consequent': ('action', 'prefer_block'), 'weight': 0.9},
+            {'name': 'Very close to goal - MUST MOVE',
+             'antecedents': [('distance', 'very_close')],
+             'consequent': ('action', 'must_move'), 'weight': 1.0},
+        ]
