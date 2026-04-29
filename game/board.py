@@ -1,5 +1,7 @@
 # game/board.py
 
+import math
+
 import pygame
 
 GRID_SIZE = 9
@@ -33,6 +35,15 @@ RED = (220, 20, 60)
 BLOCK = (77, 88, 122)
 FIRE_ORANGE = (255, 120, 40)
 FIRE_YELLOW = (255, 232, 115)
+
+PLAYER_YELLOW = (255, 195, 30)
+
+TARGET_TOP_TINT = (42, 95, 190)
+TARGET_BOTTOM_TINT = (185, 40, 62)
+BLOCK_NEUTRAL = (182, 188, 200)
+BLOCK_STONE = (138, 118, 94)
+BLOCK_STONE_SHADOW = (86, 70, 54)
+BLOCK_STONE_HIGHLIGHT = (200, 178, 145)
 
 MOVE_COLOR = (0, 255, 163)
 BLOCK_COLOR = (138, 92, 255)
@@ -72,6 +83,14 @@ class Board:
             CELL_SIZE,
         )
 
+    @staticmethod
+    def _cell_center(pos):
+        row, col = pos
+        return (
+            MARGIN_X + col * CELL_SIZE + CELL_SIZE // 2,
+            MARGIN_TOP + row * CELL_SIZE + CELL_SIZE // 2,
+        )
+
     def _draw_board_background(self):
         self._draw_vertical_gradient(self.screen, BG_TOP, BG_BOTTOM)
 
@@ -97,9 +116,31 @@ class Board:
         sidebar_title = self.small_font.render("CONTROL PANEL", True, TEXT_MUTED)
         self.screen.blit(sidebar_title, (SIDEBAR_X + 18, SIDEBAR_Y + 16))
 
-    def _draw_goal_markers(self):
+    def _draw_goal_markers(self, t):
         top_y = MARGIN_TOP + 5
         bottom_y = MARGIN_TOP + BOARD_PIXEL - 10
+
+        # Top row is target for Red (show bluish band at top), bottom row is target for Blue (show reddish band at bottom)
+        for row, color, pulse_shift in [
+            (0, BLUE, 0),
+            (GRID_SIZE - 1, RED, 600),
+        ]:
+            row_rect = pygame.Rect(MARGIN_X, MARGIN_TOP + row * CELL_SIZE, BOARD_PIXEL, CELL_SIZE)
+            overlay = pygame.Surface((row_rect.width, row_rect.height), pygame.SRCALPHA)
+            pulse = 0.5 + 0.5 * math.sin((t + pulse_shift) / 240)
+            band_color = (*color, int(26 + 36 * pulse))
+            glow_color = (*color, int(22 + 28 * pulse))
+            pygame.draw.rect(overlay, band_color, overlay.get_rect(), border_radius=10)
+            pygame.draw.rect(overlay, glow_color, overlay.get_rect(), 2, border_radius=10)
+            self.screen.blit(overlay, row_rect.topleft)
+
+            for c in range(GRID_SIZE):
+                center = (
+                    MARGIN_X + c * CELL_SIZE + CELL_SIZE // 2,
+                    row_rect.centery,
+                )
+                radius = int(5 + 3 * pulse)
+                pygame.draw.circle(self.screen, (*color, 0), center, radius)
 
         for c in range(GRID_SIZE):
             glow_surface = pygame.Surface((CELL_SIZE, CELL_SIZE), pygame.SRCALPHA)
@@ -141,7 +182,14 @@ class Board:
         pygame.draw.circle(self.screen, color, center, 24)
         pygame.draw.circle(self.screen, (255, 255, 255), center, 24, 2)
 
-        accent = (80, 150, 255) if color == BLUE else (255, 110, 140)
+        if color == BLUE:
+            accent = (80, 150, 255)
+        elif color == RED:
+            accent = (255, 110, 140)
+        elif color == PLAYER_YELLOW:
+            accent = (255, 230, 120)
+        else:
+            accent = (150, 150, 150)
         pygame.draw.circle(self.screen, accent, (center[0] - 8, center[1] - 8), 5)
         pygame.draw.circle(self.screen, accent, (center[0] + 8, center[1] + 9), 3)
 
@@ -150,15 +198,61 @@ class Board:
         text = self.info_font.render(label, True, (255, 255, 255))
         self.screen.blit(text, (center[0] - text.get_width() // 2, center[1] - text.get_height() // 2 - 1))
 
-    def draw(self, state, mode, highlights, selected, info, can_block, must_move, role_items=None, focus_text="", focus_color=None):
+    def _draw_motion_token(self, color, label, start_pos, end_pos, progress):
+        start_x, start_y = self._cell_center(start_pos)
+        end_x, end_y = self._cell_center(end_pos)
+        x = int(start_x + (end_x - start_x) * progress)
+        y = int(start_y + (end_y - start_y) * progress)
+        offset = int(10 * (1 - abs(0.5 - progress) * 2))
+
+        glow = pygame.Surface((96, 96), pygame.SRCALPHA)
+        pygame.draw.circle(glow, (*color, 60), (48, 48), 30 + offset)
+        pygame.draw.circle(glow, (*color, 120), (48, 48), 22 + offset // 2)
+        self.screen.blit(glow, (x - 48, y - 48))
+
+        pygame.draw.circle(self.screen, (0, 0, 0), (x + 3, y + 4), 27)
+        pygame.draw.circle(self.screen, (8, 13, 26), (x, y), 27)
+        pygame.draw.circle(self.screen, color, (x, y), 24)
+        pygame.draw.circle(self.screen, (255, 255, 255), (x, y), 24, 2)
+
+        if color == BLUE:
+            accent = (80, 150, 255)
+        elif color == RED:
+            accent = (255, 110, 140)
+        elif color == PLAYER_YELLOW:
+            accent = (255, 230, 120)
+        else:
+            accent = (150, 150, 150)
+        pygame.draw.circle(self.screen, accent, (x - 8, y - 8), 5)
+        pygame.draw.circle(self.screen, accent, (x + 8, y + 9), 3)
+
+        pygame.draw.arc(self.screen, (255, 255, 255), pygame.Rect(x - 18, y - 18, 36, 36), 0.6, 2.0, 2)
+
+        text = self.info_font.render(label, True, (255, 255, 255))
+        self.screen.blit(text, (x - text.get_width() // 2, y - text.get_height() // 2 - 1))
+
+    def draw(self, state, mode, highlights, selected, info, can_block, must_move, role_items=None, focus_text="", focus_color=None, active_color=None, block_anim_cells=None, block_anim_t=0.0, block_anim_origin="top", moving_player=None, moving_start=None, moving_end=None, moving_t=0.0, token_colors=None):
         self._draw_board_background()
-        self._draw_goal_markers()
+        self._draw_goal_markers(pygame.time.get_ticks())
         t = pygame.time.get_ticks()
+        deferred_bottom_anims = []
 
         for r in range(GRID_SIZE):
             for c in range(GRID_SIZE):
                 rect = self._cell_rect(r, c)
                 base = CELL_LIGHT if (r + c) % 2 == 0 else CELL_DARK
+                if r == 0 or r == GRID_SIZE - 1:
+                    row_color = None
+                    if token_colors and isinstance(token_colors, (list, tuple)) and len(token_colors) >= 2:
+                        row_color = token_colors[0] if r == 0 else token_colors[1]
+                    else:
+                        row_color = BLUE if r == 0 else RED
+
+                    base = (
+                        min(255, base[0] + row_color[0] // 5),
+                        min(255, base[1] + row_color[1] // 5),
+                        min(255, base[2] + row_color[2] // 5),
+                    )
                 pygame.draw.rect(self.screen, base, rect, border_radius=5)
                 pygame.draw.rect(self.screen, GRID_LINE, rect, 1, border_radius=5)
 
@@ -167,21 +261,133 @@ class Board:
                     pygame.draw.rect(self.screen, (28, 36, 64), inner, border_radius=6)
                     pygame.draw.rect(self.screen, BLOCK, inner, 2, border_radius=6)
 
+                # animated block preview (before commit)
+                if block_anim_cells and (r, c) in block_anim_cells:
+                    prog = max(0.0, min(1.0, block_anim_t))
+                    ease = 1 - (1 - prog) * (1 - prog)
+                    inner = rect.inflate(-12, -12)
+                    surf = pygame.Surface((inner.width, inner.height), pygame.SRCALPHA)
+                    alpha = int(225 * prog)
+                    base_rect = surf.get_rect()
+                    pygame.draw.rect(surf, (*BLOCK_STONE, alpha), base_rect, border_radius=7)
+                    pygame.draw.rect(surf, (*BLOCK_STONE_SHADOW, alpha), base_rect, 2, border_radius=7)
+                    top_strip = pygame.Rect(2, 2, base_rect.width - 4, max(4, base_rect.height // 4))
+                    pygame.draw.rect(surf, (*BLOCK_STONE_HIGHLIGHT, int(120 + 60 * prog)), top_strip, border_radius=6)
+                    pygame.draw.line(surf, (255, 255, 255, int(100 * prog)), (4, 5), (base_rect.width - 6, 5), 1)
+                    border_alpha = int(180 * prog)
+                    pygame.draw.rect(surf, (232, 216, 188, border_alpha), base_rect, 2, border_radius=7)
+                    if block_anim_origin == "bottom":
+                        start_y = MARGIN_TOP + BOARD_PIXEL + 10
+                    else:
+                        start_y = MARGIN_TOP - CELL_SIZE - 10
+                    drop_y = int(start_y + (inner.y - start_y) * ease)
+                    shadow = pygame.Surface((inner.width + 14, 14), pygame.SRCALPHA)
+                    shadow_alpha = int(110 * (1 - prog) + 30)
+                    pygame.draw.ellipse(shadow, (0, 0, 0, shadow_alpha), shadow.get_rect())
+                    # If coming from bottom, defer drawing so it appears above tokens
+                    if block_anim_origin == "bottom":
+                        combo_w = inner.width + 14
+                        combo_h = inner.height + 14
+                        combo = pygame.Surface((combo_w, combo_h), pygame.SRCALPHA)
+                        combo.blit(shadow, (0, inner.height - 2))
+                        combo.blit(surf, (7, 0))
+                        deferred_bottom_anims.append((combo, inner.x - 7, drop_y))
+                    else:
+                        self.screen.blit(shadow, (inner.x - 7, drop_y + inner.height - 2))
+                        self.screen.blit(surf, (inner.x, drop_y))
+
                 if (r, c) in state.fires:
                     self._draw_fire(rect, t)
 
                 if highlights and (r, c) in highlights:
                     color = MOVE_COLOR if mode.startswith("move") else BLOCK_COLOR
                     glow = rect.inflate(-8, -8)
-                    pygame.draw.rect(self.screen, color, glow, 2, border_radius=8)
+                    pulse = 0.5 + 0.5 * math.sin(t / 170 + (r + c))
+                    fill = pygame.Surface((glow.width, glow.height), pygame.SRCALPHA)
+                    pygame.draw.rect(fill, (*color, int(42 + 48 * pulse)), fill.get_rect(), border_radius=9)
+                    pygame.draw.rect(fill, (*color, 255), fill.get_rect(), 2, border_radius=9)
+                    self.screen.blit(fill, glow.topleft)
+                    pygame.draw.circle(self.screen, (*color, 0), rect.center, int(8 + 4 * pulse))
+                    pygame.draw.polygon(
+                        self.screen,
+                        color,
+                        [
+                            (rect.centerx, rect.centery - 10),
+                            (rect.centerx - 8, rect.centery + 4),
+                            (rect.centerx + 8, rect.centery + 4),
+                        ],
+                    )
                     pygame.draw.rect(self.screen, color, rect.inflate(-18, -18), 1, border_radius=6)
 
-                if selected == (r, c):
-                    pygame.draw.rect(self.screen, SELECT_COLOR, rect.inflate(-6, -6), 4, border_radius=10)
-                    pygame.draw.rect(self.screen, (255, 255, 255), rect.inflate(-2, -2), 1, border_radius=10)
+                # compute a stable selected color for block modes
+                if mode.startswith("block"):
+                    sel_color = None
+                    if focus_color:
+                        sel_color = focus_color
+                    elif active_color:
+                        sel_color = active_color
+                    else:
+                        sel_color = PLAYER_YELLOW
+                else:
+                    sel_color = SELECT_COLOR
 
-        self._draw_token(state.p1, BLUE, "B")
-        self._draw_token(state.p2, RED, "R")
+                # support selected being either a single cell or a collection of cells
+                selected_cells = None
+                if selected is not None:
+                    if isinstance(selected, tuple) and len(selected) == 2 and all(isinstance(v, int) for v in selected):
+                        selected_cells = {selected}
+                    else:
+                        try:
+                            selected_cells = set(selected)
+                        except TypeError:
+                            selected_cells = {selected}
+
+                is_selected_cell = selected_cells is not None and (r, c) in selected_cells
+
+                if is_selected_cell:
+                    pulse = 0.5 + 0.5 * math.sin(t / 120)
+                    outer = rect.inflate(-2, -2)
+                    inner = rect.inflate(-10, -10)
+                    fill = pygame.Surface((inner.width, inner.height), pygame.SRCALPHA)
+                    pygame.draw.rect(fill, (*sel_color, int(100 + 60 * pulse)), fill.get_rect(), border_radius=10)
+                    pygame.draw.rect(fill, (*sel_color, 255), fill.get_rect(), 3, border_radius=10)
+                    self.screen.blit(fill, inner.topleft)
+                    pygame.draw.rect(self.screen, sel_color, outer, int(4 + 2 * pulse), border_radius=12)
+                    pygame.draw.rect(self.screen, (255, 255, 255), inner, 1, border_radius=10)
+                    corner = pygame.Rect(rect.right - 18, rect.y + 6, 12, 12)
+                    pygame.draw.circle(self.screen, sel_color, corner.center, 6)
+                    if mode.startswith("block"):
+                        glow = rect.inflate(-18, -18)
+                        glow_fill = pygame.Surface((glow.width, glow.height), pygame.SRCALPHA)
+                        pygame.draw.rect(glow_fill, (*sel_color, int(70 + 40 * pulse)), glow_fill.get_rect(), border_radius=8)
+                        pygame.draw.rect(glow_fill, (255, 255, 255, int(85 + 40 * pulse)), glow_fill.get_rect(), 2, border_radius=8)
+                        self.screen.blit(glow_fill, glow.topleft)
+
+                if mode.startswith("block") and is_selected_cell:
+                    tint_color = sel_color
+                    shade = pygame.Surface((rect.width - 8, rect.height - 8), pygame.SRCALPHA)
+                    pygame.draw.rect(shade, (*tint_color, 110), shade.get_rect(), border_radius=8)
+                    pygame.draw.rect(shade, (238, 242, 248, 160), shade.get_rect(), 2, border_radius=8)
+                    self.screen.blit(shade, (rect.x + 4, rect.y + 4))
+
+        moving_drawn = False
+        # token color overrides: token_colors is a (p1_color, p2_color) tuple
+        p1_color = BLUE
+        p2_color = RED
+        if token_colors and isinstance(token_colors, (list, tuple)) and len(token_colors) >= 2:
+            p1_color, p2_color = token_colors[0], token_colors[1]
+
+        if moving_player == 1 and moving_start and moving_end:
+            self._draw_motion_token(p1_color, "P1", moving_start, moving_end, moving_t)
+            moving_drawn = True
+        if moving_player == 2 and moving_start and moving_end:
+            self._draw_motion_token(p2_color, "P2", moving_start, moving_end, moving_t)
+            moving_drawn = True
+
+        if not (moving_drawn and moving_player == 1):
+            self._draw_token(state.p1, p1_color, "P1")
+        if not (moving_drawn and moving_player == 2):
+            self._draw_token(state.p2, p2_color, "P2")
 
         # Bottom command panel
         panel_rect = pygame.Rect(SIDEBAR_X + 12, SIDEBAR_Y + 44, SIDEBAR_WIDTH - 24, 290)
@@ -216,8 +422,8 @@ class Board:
 
         legend_y = panel_rect.y + 118
         legend_items = role_items if role_items is not None else [
-            (BLUE, "Blue Knight: Player"),
-            (RED, "Red Knight: Player"),
+            (BLUE, "Player 1"),
+            (RED, "Player 2"),
         ]
         for i, (color, label) in enumerate(legend_items):
             yy = legend_y + i * 30
@@ -243,6 +449,11 @@ class Board:
 
         self._draw_button(self.move_btn, "MOVE", MOVE_COLOR, move_active, True)
         self._draw_button(self.block_btn, "BLOCK", BLOCK_COLOR, block_active, can_block and not must_move)
+
+        # draw any deferred bottom-origin block previews on top of tokens/UI
+        if deferred_bottom_anims:
+            for combo, x, y in deferred_bottom_anims:
+                self.screen.blit(combo, (x, y))
 
         pygame.display.flip()
 
