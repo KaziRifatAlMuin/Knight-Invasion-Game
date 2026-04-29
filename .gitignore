@@ -1,8 +1,43 @@
-# Ignore helper folder used by agent
 .helper/
+__pycache__
 
-# Common ignores
-node_modules/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+game/__pycache__/
+agents/__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Minimal, meaningful ignores for Python projects
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+env/
+.venv
+.env
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Build / packaging
+dist/
+build/
+*.egg-info/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+
+# OS files
 .DS_Store
+Thumbs.db
+
 Thumbs.db
 *.log
