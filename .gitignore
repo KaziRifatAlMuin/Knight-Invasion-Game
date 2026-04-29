@@ -8,7 +8,7 @@ game/__pycache__/
 agents/__pycache__/
 *.py[cod]
 *$py.class
-*.pyc
+*.pycgit clean -fdX
 
 # Minimal, meaningful ignores for Python projects
 
