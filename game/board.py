@@ -1,6 +1,7 @@
 # game/board.py
 
 import math
+import random
 
 import pygame
 
@@ -32,7 +33,7 @@ TEXT_MUTED = (147, 174, 211)
 
 BLUE = (0, 102, 255)
 RED = (220, 20, 60)
-BLOCK = (77, 88, 122)
+BLOCK = (156, 122, 90)
 FIRE_ORANGE = (255, 120, 40)
 FIRE_YELLOW = (255, 232, 115)
 
@@ -40,8 +41,8 @@ PLAYER_YELLOW = (255, 195, 30)
 
 TARGET_TOP_TINT = (42, 95, 190)
 TARGET_BOTTOM_TINT = (185, 40, 62)
-BLOCK_NEUTRAL = (182, 188, 200)
-BLOCK_STONE = (138, 118, 94)
+BLOCK_NEUTRAL = (156, 122, 90)
+BLOCK_STONE = (156, 122, 90)
 BLOCK_STONE_SHADOW = (86, 70, 54)
 BLOCK_STONE_HIGHLIGHT = (200, 178, 145)
 
@@ -198,6 +199,39 @@ class Board:
         text = self.info_font.render(label, True, (255, 255, 255))
         self.screen.blit(text, (center[0] - text.get_width() // 2, center[1] - text.get_height() // 2 - 1))
 
+    def _draw_stone_block(self, rect, alpha=255):
+        inner = rect.inflate(-8, -8)
+        # base surface for the block with per-pixel alpha
+        surf = pygame.Surface((inner.width, inner.height), pygame.SRCALPHA)
+
+        # base fill
+        pygame.draw.rect(surf, (*BLOCK_STONE, alpha), surf.get_rect(), border_radius=6)
+
+        # top highlight band
+        top_h = max(4, inner.height // 5)
+        top_strip = pygame.Rect(2, 2, inner.width - 4, top_h)
+        pygame.draw.rect(surf, (*BLOCK_STONE_HIGHLIGHT, int(120 * (alpha / 255))), top_strip, border_radius=5)
+
+        # subtle inner border (light)
+        pygame.draw.rect(surf, (232, 216, 188, int(60 * (alpha / 255))), surf.get_rect(), 2, border_radius=6)
+
+        # bottom shadow band for depth
+        bottom_h = max(6, inner.height // 6)
+        bottom_strip = pygame.Rect(0, inner.height - bottom_h, inner.width, bottom_h)
+        pygame.draw.rect(surf, (*BLOCK_STONE_SHADOW, int(80 * (alpha / 255))), bottom_strip, border_radius=6)
+
+        # bevel: thin light on top-left and dark on bottom-right
+        pygame.draw.line(surf, (255, 255, 255, int(30 * (alpha / 255))), (4, 6), (inner.width - 6, 6), 1)
+        pygame.draw.line(surf, (0, 0, 0, int(30 * (alpha / 255))), (4, inner.height - 6), (inner.width - 6, inner.height - 6), 1)
+
+        # drop shadow on board
+        shadow = pygame.Surface((inner.width + 14, 14), pygame.SRCALPHA)
+        pygame.draw.ellipse(shadow, (0, 0, 0, 110), shadow.get_rect())
+        self.screen.blit(shadow, (inner.x - 7, inner.y + inner.height - 6))
+
+        # blit block
+        self.screen.blit(surf, (inner.x, inner.y))
+
     def _draw_motion_token(self, color, label, start_pos, end_pos, progress):
         start_x, start_y = self._cell_center(start_pos)
         end_x, end_y = self._cell_center(end_pos)
@@ -257,9 +291,8 @@ class Board:
                 pygame.draw.rect(self.screen, GRID_LINE, rect, 1, border_radius=5)
 
                 if (r, c) in state.blocks:
-                    inner = rect.inflate(-8, -8)
-                    pygame.draw.rect(self.screen, (28, 36, 64), inner, border_radius=6)
-                    pygame.draw.rect(self.screen, BLOCK, inner, 2, border_radius=6)
+                    # draw a filled stone block with 3D effect
+                    self._draw_stone_block(rect, alpha=255)
 
                 # animated block preview (before commit)
                 if block_anim_cells and (r, c) in block_anim_cells:
@@ -472,38 +505,18 @@ class Board:
 
     @staticmethod
     def _wrap_text(text, font, max_width):
-        words = text.split()
-        if not words:
+        # Simple word-wrap: split on spaces and accumulate until width exceeded
+        if not text:
             return []
-
+        words = text.split()
         lines = []
-        current = words[0]
-        for word in words[1:]:
-            candidate = f"{current} {word}"
-            if font.size(candidate)[0] <= max_width:
-                current = candidate
+        cur = words[0]
+        for w in words[1:]:
+            test = cur + " " + w
+            if font.size(test)[0] <= max_width:
+                cur = test
             else:
-                lines.append(current)
-                current = word
-
-        lines.append(current)
+                lines.append(cur)
+                cur = w
+        lines.append(cur)
         return lines
-
-    def get_cell(self, pos):
-        x, y = pos
-        if not (
-            MARGIN_X <= x < MARGIN_X + BOARD_PIXEL
-            and MARGIN_TOP <= y < MARGIN_TOP + BOARD_PIXEL
-        ):
-            return None
-
-        col = (x - MARGIN_X) // CELL_SIZE
-        row = (y - MARGIN_TOP) // CELL_SIZE
-        return (row, col)
-
-    def get_button(self, pos):
-        if self.move_btn.collidepoint(pos):
-            return "move"
-        if self.block_btn.collidepoint(pos):
-            return "block"
-        return None

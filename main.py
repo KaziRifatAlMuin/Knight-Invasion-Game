@@ -27,7 +27,8 @@ AI_BLUE = (0, 102, 255)
 AI_RED = (220, 20, 60)
 PLAYER_YELLOW = (255, 195, 30)
 ACCENT_CYAN = (52, 247, 255)
-BLOCK_NEUTRAL = (182, 188, 200)
+# stone color (hex #9c7a5a -> rgb 156,122,90)
+BLOCK_NEUTRAL = (156, 122, 90)
 
 
 def draw_vertical_gradient(surface, top_color, bottom_color):
