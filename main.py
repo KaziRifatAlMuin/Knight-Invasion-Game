@@ -1,4 +1,4 @@
-# main.py
+# -*- coding: utf-8 -*-
 
 import random
 import sys

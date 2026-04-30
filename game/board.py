@@ -520,3 +520,24 @@ class Board:
                 cur = w
         lines.append(cur)
         return lines
+
+    def get_button(self, pos):
+        """Return 'move' or 'block' if the given screen position hits a sidebar button."""
+        if self.move_btn.collidepoint(pos):
+            return "move"
+        if self.block_btn.collidepoint(pos):
+            return "block"
+        return None
+
+    def get_cell(self, pos):
+        """Convert a screen (x,y) position to a board cell (row, col), or None if outside."""
+        x, y = pos
+        if x < MARGIN_X or x >= MARGIN_X + BOARD_PIXEL:
+            return None
+        if y < MARGIN_TOP or y >= MARGIN_TOP + BOARD_PIXEL:
+            return None
+        col = (x - MARGIN_X) // CELL_SIZE
+        row = (y - MARGIN_TOP) // CELL_SIZE
+        if 0 <= row < GRID_SIZE and 0 <= col < GRID_SIZE:
+            return (row, col)
+        return None

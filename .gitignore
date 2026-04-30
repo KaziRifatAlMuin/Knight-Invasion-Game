@@ -1,4 +1,5 @@
 .helper/
+web/
 __pycache__
 
 
@@ -28,7 +29,7 @@ env/
 
 
 # Build / packaging
-dist/
+web/
 build/
 *.egg-info/
 

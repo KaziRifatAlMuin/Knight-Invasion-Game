@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knight Invasion — Duel Arena</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050810;
+            --bg2: #0a1020;
+            --bg3: #0f1830;
+            --cyan: #00e5ff;
+            --pink: #ff3e9d;
+            --gold: #ffd060;
+            --red: #ff2244;
+            --blue: #2266ff;
+            --text: #e8f0ff;
+            --muted: #7090b0;
+            --card: rgba(255, 255, 255, 0.04);
+            --border: rgba(0, 229, 255, 0.18);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        /* ── STARS ── */
+        .stars {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                radial-gradient(1px 1px at 10% 15%, rgba(255, 255, 255, 0.6), transparent),
+                radial-gradient(1px 1px at 25% 45%, rgba(255, 255, 255, 0.4), transparent),
+                radial-gradient(1px 1px at 40% 20%, rgba(255, 255, 255, 0.5), transparent),
+                radial-gradient(1px 1px at 60% 70%, rgba(255, 255, 255, 0.3), transparent),
+                radial-gradient(1px 1px at 75% 30%, rgba(255, 255, 255, 0.6), transparent),
+                radial-gradient(1px 1px at 85% 55%, rgba(255, 255, 255, 0.4), transparent),
+                radial-gradient(1px 1px at 95% 10%, rgba(255, 255, 255, 0.5), transparent),
+                radial-gradient(1px 1px at 5% 80%, rgba(255, 255, 255, 0.3), transparent),
+                radial-gradient(1px 1px at 50% 90%, rgba(255, 255, 255, 0.4), transparent),
+                radial-gradient(2px 2px at 20% 65%, rgba(0, 229, 255, 0.3), transparent),
+                radial-gradient(2px 2px at 70% 85%, rgba(255, 62, 157, 0.2), transparent);
+        }
+
+        /* ── HERO ── */
+        .hero {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 60px 20px;
+            background:
+                radial-gradient(ellipse 900px 500px at 50% 30%, rgba(0, 100, 200, 0.12), transparent),
+                radial-gradient(ellipse 600px 400px at 80% 60%, rgba(255, 62, 157, 0.08), transparent);
+        }
+
+        .hero-badge {
+            display: inline-block;
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            font-size: 11px;
+            letter-spacing: 4px;
+            padding: 6px 18px;
+            border-radius: 2px;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-border {
+
+            0%,
+            100% {
+                box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(0, 229, 255, 0.6), 0 0 40px rgba(0, 229, 255, 0.2);
+            }
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(52px, 10vw, 110px);
+            font-weight: 900;
+            line-height: 0.95;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, #ffffff 0%, var(--cyan) 40%, var(--pink) 80%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .hero-sub {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(14px, 3vw, 22px);
+            letter-spacing: 6px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+
+        .hero-desc {
+            max-width: 600px;
+            font-size: 18px;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 48px;
+        }
+
+        .cta-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 48px;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: linear-gradient(135deg, var(--cyan), #0088cc);
+            color: #000;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding: 16px 36px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 30px rgba(0, 229, 255, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 40px rgba(0, 229, 255, 0.6);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: transparent;
+            color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            padding: 15px 36px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--cyan);
+            color: var(--cyan);
+            background: rgba(0, 229, 255, 0.06);
+        }
+
+        /* ── SECTION ── */
+        section {
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        .section-title {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(28px, 5vw, 46px);
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .section-divider {
+            width: 80px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--cyan), var(--pink));
+            margin: 0 auto 60px;
+        }
+
+        /* ── MINI BOARD PREVIEW ── */
+        .board-preview {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 2px;
+            max-width: 360px;
+            margin: 0 auto 48px;
+            padding: 8px;
+            background: rgba(0, 229, 255, 0.05);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            border-radius: 8px;
+        }
+
+        .preview-cell {
+            aspect-ratio: 1;
+            border-radius: 3px;
+        }
+
+        .pc-light {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .pc-dark {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .pc-p1 {
+            background: var(--blue);
+            box-shadow: 0 0 8px rgba(34, 102, 255, 0.8);
+        }
+
+        .pc-p2 {
+            background: var(--red);
+            box-shadow: 0 0 8px rgba(255, 34, 68, 0.8);
+        }
+
+        .pc-fire {
+            background: #ff6010;
+        }
+
+        .pc-block {
+            background: rgba(150, 120, 80, 0.8);
+        }
+
+        .pc-goal1 {
+            background: rgba(34, 102, 255, 0.25);
+        }
+
+        .pc-goal2 {
+            background: rgba(255, 34, 68, 0.25);
+        }
+
+        /* ── FEATURES ── */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 28px 24px;
+            transition: border-color 0.3s, transform 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--cyan);
+            transform: translateY(-4px);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 16px;
+        }
+
+        .fi-cyan {
+            background: rgba(0, 229, 255, 0.12);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+        }
+
+        .fi-pink {
+            background: rgba(255, 62, 157, 0.12);
+            border: 1px solid rgba(255, 62, 157, 0.3);
+        }
+
+        .fi-gold {
+            background: rgba(255, 208, 96, 0.12);
+            border: 1px solid rgba(255, 208, 96, 0.3);
+        }
+
+        .fi-red {
+            background: rgba(255, 34, 68, 0.12);
+            border: 1px solid rgba(255, 34, 68, 0.3);
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .feature-card p {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* ── AGENTS ── */
+        .agents-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 640px) {
+            .agents-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .agent-card {
+            background: var(--card);
+            border-radius: 8px;
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .agent-card.minimax {
+            border: 1px solid rgba(34, 102, 255, 0.4);
+        }
+
+        .agent-card.fuzzy {
+            border: 1px solid rgba(255, 34, 68, 0.4);
+        }
+
+        .agent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .agent-card.minimax::before {
+            background: linear-gradient(90deg, var(--blue), transparent);
+        }
+
+        .agent-card.fuzzy::before {
+            background: linear-gradient(90deg, var(--red), transparent);
+        }
+
+        .agent-name {
+            font-family: 'Cinzel', serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .agent-card.minimax .agent-name {
+            color: #66aaff;
+        }
+
+        .agent-card.fuzzy .agent-name {
+            color: #ff6680;
+        }
+
+        .agent-algo {
+            font-size: 12px;
+            letter-spacing: 3px;
+            padding: 4px 12px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .minimax .agent-algo {
+            background: rgba(34, 102, 255, 0.15);
+            color: #66aaff;
+            border: 1px solid rgba(34, 102, 255, 0.3);
+        }
+
+        .fuzzy .agent-algo {
+            background: rgba(255, 34, 68, 0.15);
+            color: #ff6680;
+            border: 1px solid rgba(255, 34, 68, 0.3);
+        }
+
+        .agent-desc {
+            font-size: 15px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-val {
+            font-family: 'Cinzel', serif;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .stat-lbl {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--muted);
+        }
+
+        /* ── RULES ── */
+        .rules-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        @media (max-width: 768px) {
+            .rules-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .rule-block {
+            margin-bottom: 28px;
+        }
+
+        .rule-block h3 {
+            font-size: 14px;
+            letter-spacing: 3px;
+            color: var(--cyan);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .rule-block p,
+        .rule-block li {
+            font-size: 16px;
+            color: var(--muted);
+            line-height: 1.7;
+            margin-bottom: 6px;
+        }
+
+        .rule-block ul {
+            padding-left: 20px;
+        }
+
+        .rule-block li {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .rule-block li::before {
+            content: "→ ";
+            color: var(--cyan);
+        }
+
+        .fire-rule {
+            background: rgba(255, 96, 16, 0.1);
+            border: 1px solid rgba(255, 96, 16, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 12px;
+        }
+
+        .fire-rule strong {
+            color: #ff8040;
+        }
+
+        /* ── GAME SECTION ── */
+        #game-section {
+            background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 50%, var(--bg) 100%);
+        }
+
+        .game-wrapper {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 229, 255, 0.15);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .game-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            flex-wrap: wrap;
+        }
+
+        .game-toolbar select,
+        .game-toolbar button {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .game-toolbar button:hover {
+            background: rgba(0, 229, 255, 0.15);
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .game-toolbar button.active {
+            background: rgba(0, 229, 255, 0.2);
+            border-color: var(--cyan);
+            color: var(--cyan);
+        }
+
+        .toolbar-sep {
+            flex: 1;
+        }
+
+        #status-bar {
+            font-size: 14px;
+            color: var(--cyan);
+            padding: 8px 16px;
+            background: rgba(0, 229, 255, 0.05);
+            border: 1px solid rgba(0, 229, 255, 0.15);
+            border-radius: 4px;
+            min-width: 220px;
+            text-align: center;
+        }
+
+        #game-canvas-wrap {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        canvas#gameCanvas {
+            border: 1px solid rgba(0, 229, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* ── MODES GRID ── */
+        .modes-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        @media (max-width: 540px) {
+            .modes-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .mode-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 20px 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-card:hover {
+            border-color: var(--cyan);
+            background: rgba(0, 229, 255, 0.06);
+        }
+
+        .mode-card.selected {
+            border-color: var(--gold);
+            background: rgba(255, 208, 96, 0.06);
+        }
+
+        .mode-card h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .mode-card p {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        /* ── DOWNLOAD CTA ── */
+        .download-cta {
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.08), rgba(255, 62, 157, 0.06));
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .download-cta::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 500px 300px at 50% 50%, rgba(0, 229, 255, 0.05), transparent);
+            pointer-events: none;
+        }
+
+        .download-cta h2 {
+            font-family: 'Cinzel', serif;
+            font-size: 36px;
+            margin-bottom: 16px;
+        }
+
+        .download-cta p {
+            font-size: 17px;
+            color: var(--muted);
+            max-width: 500px;
+            margin: 0 auto 36px;
+        }
+
+        .sha-box {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            padding: 10px 18px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 24px;
+            word-break: break-all;
+            max-width: 600px;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            position: relative;
+            z-index: 1;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            padding: 40px 24px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        footer a {
+            color: var(--cyan);
+            text-decoration: none;
+        }
+
+        /* ── FLAME ANIMATION ── */
+        @keyframes flicker {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(0.92);
+            }
+        }
+
+        /* ── SCROLL REVEAL ── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s, transform 0.7s;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* responsive canvas */
+        @media (max-width: 700px) {
+            .rules-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .agents-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stars"></div>
+
+    <!-- ─── HERO ─── -->
+    <header class="hero">
+        <div class="hero-badge">CSE 3210 · AI Laboratory</div>
+        <h1>Knight<br>Invasion</h1>
+        <div class="hero-sub">Duel Arena</div>
+        <p class="hero-desc">
+            A tactical board game where two knights race across a burning 9×9 grid.
+            Move like chess, block like a strategist, survive the fire.
+            <br><strong style="color:var(--cyan)">Minimax</strong> vs
+            <strong style="color:#ff6680">Fuzzy Logic</strong> — let the algorithms duel.
+        </p>
+
+        <!-- ─── DOWNLOAD ─── -->
+        <section>
+            <div class="section-inner reveal">
+                <div class="download-cta">
+                    <h2>Full Desktop Experience</h2>
+                    <p>The Windows build includes full animations, smooth token movement, glowing effects, and polished
+                        UI
+                        built with Pygame. Everything the browser demo can't show.</p>
+                    <div class="cta-row" style="justify-content:center">
+                        <a class="btn-primary"
+                            href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/dist/Knight-Invasion.exe"
+                            download>↓
+                            Download Windows .exe</a>
+                        <a class="btn-secondary" href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game"
+                            target="_blank">View on GitHub</a>
+                    </div>
+                    <div class="sha-box">
+                        SHA256: E03424B8EC901E3777F930899A87BF60AE97A84DC5FB41EA9C5F8DA41F18915C<br>
+                        File: Knight-Invasion.exe · Size: 14.78 MB
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- <div class="cta-row">
+            <a class="btn-primary" href="#game-section"
+                onclick="document.getElementById('game-section').scrollIntoView({behavior:'smooth'});return false;">
+                ♟ Play in Browser
+            </a>
+            <a class="btn-secondary" href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game" target="_blank">
+                ⤓ GitHub Source
+            </a>
+            <a class="btn-secondary" download
+                href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/dist/Knight-Invasion.exe" download
+                onclick="downloadGame();return false;" id="dl-btn">
+                ↓ Windows .exe
+            </a>
+        </div> -->
+        <!-- mini board preview -->
+        <div class="board-preview" id="hero-board"></div>
+    </header>
+
+    <!-- ─── FEATURES ─── -->
+    <section>
+        <div class="section-inner reveal">
+            <h2 class="section-title">What Makes It Special</h2>
+            <div class="section-divider"></div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon fi-cyan">♞</div>
+                    <h3>Knight Movement</h3>
+                    <p>Standard chess knight L-moves on a 9×9 grid. Every move is a calculated leap — up to 8
+                        directions, but fire and blocks narrow your options fast.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon fi-pink">⬛</div>
+                    <h3>Strategic Blocking</h3>
+                    <p>Place two permanent blocks per turn instead of moving. BFS validates every placement — you can
+                        never trap your opponent with no path to win.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon fi-gold">🔥</div>
+                    <h3>Fire Hazard</h3>
+                    <p>Random symmetric fire cells spawn at game start. Landing adjacent to fire forces you to move — no
+                        blocking, no hesitation. The board breathes danger.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon fi-red">🧠</div>
+                    <h3>Dual AI Engines</h3>
+                    <p>Minimax with alpha-beta pruning and iterative deepening duels Fuzzy Logic's membership-function
+                        inference system. Optimal vs. heuristic — who wins?</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── GAME MODES ─── -->
+    <section style="background: linear-gradient(180deg,transparent,rgba(0,229,255,0.03),transparent)">
+        <div class="section-inner reveal">
+            <h2 class="section-title">Game Modes</h2>
+            <div class="section-divider"></div>
+            <div class="modes-grid">
+                <div class="mode-card">
+                    <h4>⚔ Two Player</h4>
+                    <p>Hot-seat local duel. Both players share one keyboard and board. Classic tactical showdown.</p>
+                </div>
+                <div class="mode-card">
+                    <h4>🤖 vs Minimax AI</h4>
+                    <p>Face the optimal tree-search agent. Depth-6 iterative deepening with time-bounded alpha-beta
+                        pruning.</p>
+                </div>
+                <div class="mode-card">
+                    <h4>🔴 vs Fuzzy AI</h4>
+                    <p>Challenge the fuzzy inference system with 8 linguistic rules mapping race advantage to block/move
+                        preference.</p>
+                </div>
+                <div class="mode-card">
+                    <h4>🔵🔴 AI vs AI</h4>
+                    <p>Watch Minimax and Fuzzy Logic battle autonomously. Pure algorithmic warfare — sit back and
+                        observe.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── AGENTS ─── -->
+    <section>
+        <div class="section-inner reveal">
+            <h2 class="section-title">The Agents</h2>
+            <div class="section-divider"></div>
+            <div class="agents-grid">
+                <div class="agent-card minimax">
+                    <div class="agent-name">Blue Knight</div>
+                    <div class="agent-algo">MINIMAX · ALPHA-BETA</div>
+                    <p class="agent-desc">
+                        Kazi Rifat Al Muin's agent searches the game tree up to depth 6 using iterative deepening and
+                        alpha-beta pruning. A heuristic evaluates BFS distance, row progress, mobility, and block power.
+                        Time-bounded at 0.9s — always returns the best move found so far.
+                    </p>
+                    <div class="stat-row">
+                        <div class="stat">
+                            <div class="stat-val" style="color:#66aaff">6</div>
+                            <div class="stat-lbl">DEPTH</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-val" style="color:#66aaff">0.9s</div>
+                            <div class="stat-lbl">TIME LIMIT</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-val" style="color:#66aaff">500</div>
+                            <div class="stat-lbl">BFS WEIGHT</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="agent-card fuzzy">
+                    <div class="agent-name">Red Knight</div>
+                    <div class="agent-algo">FUZZY LOGIC · FIS</div>
+                    <p class="agent-desc">
+                        Dipta Chowdhury's agent uses triangular membership functions across distance, race advantage,
+                        and opponent proximity. 8 rules fire weighted strength values — defuzzification via centroid
+                        yields a crisp action preference from "must move" to "must block".
+                    </p>
+                    <div class="stat-row">
+                        <div class="stat">
+                            <div class="stat-val" style="color:#ff6680">8</div>
+                            <div class="stat-lbl">RULES</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-val" style="color:#ff6680">5</div>
+                            <div class="stat-lbl">FUZZY SETS</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-val" style="color:#ff6680">BFS</div>
+                            <div class="stat-lbl">PATH EVAL</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── RULES ─── -->
+    <section style="background: rgba(255,255,255,0.01)">
+        <div class="section-inner reveal">
+            <h2 class="section-title">Rules & Mechanics</h2>
+            <div class="section-divider"></div>
+            <div class="rules-layout">
+                <div>
+                    <div class="rule-block">
+                        <h3>Objective</h3>
+                        <p>Player 1 (Blue) starts at row 0 and must reach <strong>row 8</strong>. Player 2 (Red) starts
+                            at row 8 and must reach <strong>row 0</strong>. First to reach the opponent's starting row
+                            wins.</p>
+                    </div>
+                    <div class="rule-block">
+                        <h3>Knight Movement</h3>
+                        <ul>
+                            <li>Moves in an L-shape: 2 squares one way, 1 square perpendicular</li>
+                            <li>Cannot land on fire cells, blocks, or the opponent</li>
+                            <li>Must stay within the 9×9 board boundaries</li>
+                        </ul>
+                    </div>
+                    <div class="rule-block">
+                        <h3>Blocking</h3>
+                        <ul>
+                            <li>Place exactly 2 permanent blocks on empty cells instead of moving</li>
+                            <li>Blocks cannot be placed on fire, other blocks, or any knight</li>
+                            <li>Both players MUST retain a valid path to their goal row after any block placement —
+                                enforced by BFS</li>
+                            <li>If no valid pair of blocks exists, you must move</li>
+                        </ul>
+                    </div>
+                </div>
+                <div>
+                    <div class="rule-block">
+                        <h3>Fire Hazard</h3>
+                        <div class="fire-rule">
+                            <p><strong>🔥 Fire cells</strong> are generated symmetrically at game start. No knight can
+                                move onto fire. If your knight is <strong>adjacent</strong> (including diagonally) to
+                                any fire cell, you <strong>must</strong> move that turn — blocking is disabled.</p>
+                        </div>
+                    </div>
+                    <div class="rule-block" style="margin-top: 24px">
+                        <h3>Difficulty</h3>
+                        <ul>
+                            <li>Easy: 4–8 fire cells on the board</li>
+                            <li>Medium: 8–12 fire cells on the board</li>
+                            <li>Hard: 12–16 fire cells on the board</li>
+                        </ul>
+                    </div>
+                    <div class="rule-block">
+                        <h3>Turn Order</h3>
+                        <ul>
+                            <li>Players alternate turns — one action per turn</li>
+                            <li>Either move the knight OR place two blocks, never both</li>
+                            <li>No passing — you must take an action each turn</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── IN-BROWSER GAME ─── -->
+    <section id="game-section">
+        <div class="section-inner reveal">
+            <h2 class="section-title">Play Now</h2>
+            <p style="text-align:center;color:var(--muted);font-size:16px;margin-bottom:8px">Browser version — Two
+                Player mode. Click a mode, choose difficulty, then play!</p>
+            <div class="section-divider"></div>
+            <div class="game-wrapper">
+                <div class="game-toolbar">
+                    <button onclick="startGame('2p')" id="btn2p" class="active">⚔ 2 Player</button>
+                    <button onclick="startGame('pvmm')" id="btnpvmm">🤖 vs Minimax</button>
+                    <button onclick="startGame('pvfz')" id="btnpvfz">🔴 vs Fuzzy</button>
+                    <button onclick="startGame('aivai')" id="btnaivai">🔵🔴 AI vs AI</button>
+                    <div class="toolbar-sep"></div>
+                    <select id="fire-select" style="padding:8px 12px;border-radius:4px">
+                        <option value="6">Easy (6 fires)</option>
+                        <option value="10" selected>Medium (10 fires)</option>
+                        <option value="14">Hard (14 fires)</option>
+                    </select>
+                    <button onclick="resetGame()" style="border-color:rgba(255,208,96,0.4);color:var(--gold)">↺
+                        Restart</button>
+                    <div id="status-bar">Select mode → New Game</div>
+                </div>
+                <div id="game-canvas-wrap">
+                    <canvas id="gameCanvas" width="576" height="576"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ─── DOWNLOAD ─── -->
+    <section>
+        <div class="section-inner reveal">
+            <div class="download-cta">
+                <h2>Full Desktop Experience</h2>
+                <p>The Windows build includes full animations, smooth token movement, glowing effects, and polished UI
+                    built with Pygame. Everything the browser demo can't show.</p>
+                <div class="cta-row" style="justify-content:center">
+                    <a class="btn-primary"
+                        href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/dist/Knight-Invasion.exe" download
+                        target="_blank">↓ Download Windows .exe</a>
+                    <a class="btn-secondary" href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game"
+                        target="_blank">View on GitHub</a>
+                </div>
+                <div class="sha-box">
+                    SHA256: E03424B8EC901E3777F930899A87BF60AE97A84DC5FB41EA9C5F8DA41F18915C<br>
+                    File: Knight-Invasion.exe · Size: 14.78 MB
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>Built for <strong>CSE 3210: Artificial Intelligence Laboratory</strong></p>
+        <p style="margin-top:10px">
+            <a href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game">Kazi Rifat Al Muin</a> — Minimax AI
+            &nbsp;·&nbsp; Dipta Chowdhury — Fuzzy AI
+        </p>
+    </footer>
+
+    <script>
+        // ── HERO BOARD PREVIEW ──
+        (function () {
+            const board = document.getElementById('hero-board');
+            const grid = [
+                [0, 0, 1, 1, 1, 1, 1, 0, 0], // row 0 = blue goal
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 3, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 3, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 3, 0, 0, 0, 0, 3, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 2, 2, 2, 2, 2, 0, 0], // row 8 = red goal
+            ];
+            // place tokens
+            const p1 = [0, 4], p2 = [8, 4];
+            for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+                const d = document.createElement('div');
+                d.className = 'preview-cell';
+                if (r === p1[0] && c === p1[1]) d.className += ' pc-p1';
+                else if (r === p2[0] && c === p2[1]) d.className += ' pc-p2';
+                else if (grid[r][c] === 3) d.className += ' pc-fire';
+                else if (grid[r][c] === 1) d.className += ' pc-goal1';
+                else if (grid[r][c] === 2) d.className += ' pc-goal2';
+                else d.className += (r + c) % 2 === 0 ? ' pc-light' : ' pc-dark';
+                board.appendChild(d);
+            }
+        })();
+
+        // ── SCROLL REVEAL ──
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        // ── DOWNLOAD ──
+        function downloadGame() {
+            window.open('https://github.com/KaziRifatAlMuin/Knight-Invasion-Game', '_blank');
+        }
+
+        // ════════════════════════════════════════════
+        //  IN-BROWSER GAME ENGINE
+        // ════════════════════════════════════════════
+        const COLS = 9, ROWS = 9;
+        const KNIGHT_MOVES = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]];
+
+        let game = null;
+        let currentMode = '2p';
+        let aiThinkTimer = null;
+
+        function inBounds(r, c) { return r >= 0 && r < ROWS && c >= 0 && c < COLS; }
+        function posEq(a, b) { return a[0] === b[0] && a[1] === b[1]; }
+
+        function getKnightMoves(pos, blocks, fires, opp) {
+            const [r, c] = pos;
+            return KNIGHT_MOVES.map(([dr, dc]) => [r + dr, c + dc]).filter(([nr, nc]) =>
+                inBounds(nr, nc) && !blocks.some(b => posEq(b, [nr, nc])) &&
+                !fires.some(f => posEq(f, [nr, nc])) && !posEq(opp, [nr, nc])
+            );
+        }
+
+        function isAdjacentToFire(pos, fires) {
+            const [r, c] = pos;
+            for (const [fr, fc] of fires) if (Math.max(Math.abs(r - fr), Math.abs(c - fc)) === 1) return true;
+            return false;
+        }
+
+        function bfs(start, targetRow, blocks, fires, opp) {
+            const visited = new Set([start.join(',')]);
+            const q = [[start, 0]];
+            while (q.length) {
+                const [[r, c], d] = q.shift();
+                if (r === targetRow) return d;
+                for (const [dr, dc] of KNIGHT_MOVES) {
+                    const nr = r + dr, nc = c + dc;
+                    const key = nr + ',' + nc;
+                    if (inBounds(nr, nc) && !visited.has(key) && !blocks.some(b => posEq(b, [nr, nc])) &&
+                        !fires.some(f => posEq(f, [nr, nc])) && !posEq(opp, [nr, nc])) {
+                        visited.add(key);
+                        q.push([[nr, nc], d + 1]);
+                    }
+                }
+            }
+            return 999;
+        }
+
+        function hasPath(start, targetRow, blocks, fires, opp) {
+            return bfs(start, targetRow, blocks, fires, opp) < 999;
+        }
+
+        function canPlaceBlocks(blocks, fires, p1, p2, c1, c2) {
+            if (posEq(c1, c2)) return false;
+            for (const c of [c1, c2]) {
+                if (blocks.some(b => posEq(b, c)) || fires.some(f => posEq(f, c)) || posEq(c, p1) || posEq(c, p2)) return false;
+            }
+            const nb = [...blocks, c1, c2];
+            return hasPath(p1, ROWS - 1, nb, fires, p2) && hasPath(p2, 0, nb, fires, p1);
+        }
+
+        function genFires(p1, p2, count) {
+            let fires = [];
+            let tries = 0;
+            while (fires.length < count && tries < 2000) {
+                tries++;
+                const r = 1 + Math.floor(Math.random() * (Math.floor(ROWS / 2) - 1));
+                const c = Math.floor(Math.random() * COLS);
+                const sym = [ROWS - 1 - r, c];
+                const cand = [[r, c], sym];
+                if (cand.some(([cr, cc]) => posEq([cr, cc], p1) || posEq([cr, cc], p2))) continue;
+                if (fires.some(f => posEq(f, [r, c]) || posEq(f, sym))) continue;
+                const nf = [...fires, ...cand];
+                if (hasPath(p1, ROWS - 1, [], nf, p2) && hasPath(p2, 0, [], nf, p1)) {
+                    fires = nf;
+                }
+            }
+            return fires;
+        }
+
+        function newGame(mode) {
+            const fireCount = parseInt(document.getElementById('fire-select').value);
+            const p1 = [0, 4], p2 = [8, 4];
+            return {
+                p1, p2,
+                blocks: [],
+                fires: genFires(p1, p2, fireCount),
+                turn: 1,// 1=blue,2=red
+                phase: 'choose',// choose|move|block1|block2
+                selected: null,
+                highlights: [],
+                winner: null,
+                mode,
+                message: '',
+                aiTurnPending: false,
+            };
+        }
+
+        function checkWinner(g) {
+            if (g.p1[0] === ROWS - 1) return 1;
+            if (g.p2[0] === 0) return 2;
+            return null;
+        }
+
+        // ── CANVAS RENDERER ──
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const CS = 64; // cell size
+
+        function cellToXY(r, c) { return [c * CS, r * CS]; }
+        function xyToCell(x, y) { return [Math.floor(y / CS), Math.floor(x / CS)]; }
+
+        const COLORS = {
+            cellLight: '#0c1428', cellDark: '#08101e', grid: '#1a2a44',
+            goalBlue: 'rgba(34,102,255,0.22)', goalRed: 'rgba(255,34,68,0.22)',
+            blue: '#2266ff', red: '#ff2244', fire1: '#ff6010', fire2: '#ffcc30',
+            block: '#8a6640', blockH: '#c89a60', blockS: '#503c20',
+            hlMove: 'rgba(0,229,255,0.55)', hlBlock: 'rgba(160,80,255,0.55)',
+            selBorder: '#ffd060', text: '#e8f0ff', muted: '#5070a0',
+        };
+
+        function drawBoard(g) {
+            const { p1, p2, blocks, fires, highlights, selected, phase, winner, turn, message } = g;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // cells
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                const [x, y] = cellToXY(r, c);
+                let fill = (r + c) % 2 === 0 ? COLORS.cellLight : COLORS.cellDark;
+                if (r === 0) fill = COLORS.goalBlue;
+                if (r === ROWS - 1) fill = COLORS.goalRed;
+                ctx.fillStyle = fill;
+                roundRect(ctx, x + 1, y + 1, CS - 2, CS - 2, 4);
+                ctx.fill();
+                ctx.strokeStyle = COLORS.grid;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            }
+
+            // fire
+            for (const [fr, fc] of fires) {
+                const [x, y] = cellToXY(fr, fc);
+                const t = Date.now() / 800;
+                const pulse = Math.sin(t + (fr + fc) * 0.5) * 0.15;
+                ctx.fillStyle = COLORS.fire1;
+                roundRect(ctx, x + 8, y + 8, CS - 16, CS - 16, 20); ctx.fill();
+                ctx.fillStyle = COLORS.fire2;
+                roundRect(ctx, x + 14, y + 14, CS - 28, CS - 28, 12); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.beginPath(); ctx.arc(x + CS / 2, y + CS / 2, 5 + pulse * 8, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // blocks
+            for (const [br, bc] of blocks) {
+                const [x, y] = cellToXY(br, bc);
+                ctx.fillStyle = COLORS.block;
+                roundRect(ctx, x + 5, y + 5, CS - 10, CS - 10, 5); ctx.fill();
+                ctx.fillStyle = COLORS.blockH;
+                roundRect(ctx, x + 7, y + 7, CS - 14, 12); ctx.fill();
+                ctx.fillStyle = COLORS.blockS;
+                roundRect(ctx, x + 7, y + CS - 18, CS - 14, 8, 3); ctx.fill();
+                ctx.strokeStyle = 'rgba(200,160,100,0.3)'; ctx.lineWidth = 1;
+                roundRect(ctx, x + 5, y + 5, CS - 10, CS - 10, 5); ctx.stroke();
+            }
+
+            // highlights
+            for (const [hr, hc] of (highlights || [])) {
+                const [x, y] = cellToXY(hr, hc);
+                const col = phase.startsWith('block') ? COLORS.hlBlock : COLORS.hlMove;
+                ctx.fillStyle = col;
+                roundRect(ctx, x + 3, y + 3, CS - 6, CS - 6, 6); ctx.fill();
+                // small arrow
+                ctx.fillStyle = phase.startsWith('block') ? 'rgba(160,80,255,0.9)' : 'rgba(0,229,255,0.9)';
+                drawArrow(ctx, x + CS / 2, y + CS / 2, 8);
+            }
+
+            // selected
+            if (selected) {
+                const [sr, sc] = selected;
+                const [x, y] = cellToXY(sr, sc);
+                ctx.strokeStyle = COLORS.selBorder;
+                ctx.lineWidth = 3;
+                roundRect(ctx, x + 3, y + 3, CS - 6, CS - 6, 7); ctx.stroke();
+            }
+
+            // tokens
+            drawToken(p1, COLORS.blue, 'P1');
+            drawToken(p2, COLORS.red, 'P2');
+
+            // info overlay
+            drawInfoPanel(g);
+
+            if (winner) drawWinScreen(g, winner);
+        }
+
+        function drawArrow(ctx, cx, cy, r) {
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - r); ctx.lineTo(cx - r * 0.6, cy + r * 0.5); ctx.lineTo(cx + r * 0.6, cy + r * 0.5);
+            ctx.closePath(); ctx.fill();
+        }
+
+        function drawToken(pos, color, label) {
+            const [r, c] = pos;
+            const [x, y] = cellToXY(r, c);
+            const cx = x + CS / 2, cy = y + CS / 2;
+            // shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath(); ctx.arc(cx + 2, cy + 3, 22, 0, Math.PI * 2); ctx.fill();
+            // glow
+            const grd = ctx.createRadialGradient(cx, cy, 5, cx, cy, 26);
+            grd.addColorStop(0, 'rgba(255,255,255,0.3)');
+            grd.addColorStop(1, 'transparent');
+            ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(cx, cy, 26, 0, Math.PI * 2); ctx.fill();
+            // body
+            ctx.fillStyle = color; ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.stroke();
+            // shine
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.beginPath(); ctx.arc(cx - 7, cy - 7, 8, 0, Math.PI * 2); ctx.fill();
+            // label
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 13px Rajdhani, sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(label, cx, cy);
+        }
+
+        function drawInfoPanel(g) {
+            const { turn, phase, message, p1, p2, fires, blocks, mode } = g;
+            const panelH = 60;
+            ctx.fillStyle = 'rgba(5,8,18,0.88)';
+            ctx.fillRect(0, ROWS * CS, canvas.width, panelH);
+            ctx.strokeStyle = 'rgba(0,229,255,0.2)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(0, ROWS * CS); ctx.lineTo(canvas.width, ROWS * CS); ctx.stroke();
+
+            const playerColor = turn === 1 ? COLORS.blue : COLORS.red;
+            const playerLabel = getPlayerLabel(turn, mode);
+            ctx.fillStyle = playerColor;
+            ctx.font = 'bold 14px Rajdhani, sans-serif';
+            ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+            ctx.fillText(playerLabel + ' TURN', 16, ROWS * CS + 18);
+
+            const msg = getMessage(g);
+            ctx.fillStyle = 'rgba(112,144,176,0.9)';
+            ctx.font = '13px Rajdhani, sans-serif';
+            ctx.fillText(msg, 16, ROWS * CS + 38);
+
+            // BFS distances
+            const d1 = bfs(p1, ROWS - 1, blocks, fires, p2);
+            const d2 = bfs(p2, 0, blocks, fires, p1);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = 'rgba(0,229,255,0.7)';
+            ctx.font = 'bold 12px Rajdhani, sans-serif';
+            ctx.fillText('P1: ' + d1 + ' moves left', canvas.width - 16, ROWS * CS + 18);
+            ctx.fillStyle = 'rgba(255,34,68,0.7)';
+            ctx.fillText('P2: ' + d2 + ' moves left', canvas.width - 16, ROWS * CS + 38);
+        }
+
+        function getPlayerLabel(turn, mode) {
+            if (mode === '2p') return 'PLAYER ' + (turn === 1 ? '1' : '2');
+            if (mode === 'pvmm') return turn === 1 ? 'MINIMAX AI' : 'YOU';
+            if (mode === 'pvfz') return turn === 1 ? 'FUZZY AI' : 'YOU';
+            if (mode === 'aivai') return turn === 1 ? 'MINIMAX' : 'FUZZY';
+            return 'PLAYER ' + (turn === 1 ? '1' : '2');
+        }
+
+        function getMessage(g) {
+            const { phase, turn, mode } = g;
+            const mustMove = isAdjacentToFire(turn === 1 ? g.p1 : g.p2, g.fires);
+            if (mustMove) return 'Adjacent to fire — must move!';
+            if (phase === 'choose') return 'Click MOVE or BLOCK cells directly';
+            if (phase === 'move') return 'Click a highlighted cell to move';
+            if (phase === 'block1') return 'Click first cell to block';
+            if (phase === 'block2') return 'Click second cell to block';
+            return '';
+        }
+
+        function drawWinScreen(g, w) {
+            ctx.fillStyle = 'rgba(5,8,18,0.82)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height + 60);
+            const wc = w === 1 ? COLORS.blue : COLORS.red;
+            const wn = getPlayerLabel(w, g.mode) + ' WINS';
+            ctx.fillStyle = wc;
+            ctx.font = 'bold 42px Cinzel, serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(wn, canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '16px Rajdhani, sans-serif';
+            ctx.fillText('Press RESTART to play again', canvas.width / 2, canvas.height / 2 + 30);
+        }
+
+        function roundRect(ctx, x, y, w, h, r = 4) {
+            r = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+            ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+            ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+            ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r);
+            ctx.closePath();
+        }
+
+        // ── GAME LOGIC ──
+        function startGame(mode) {
+            currentMode = mode;
+            ['btn2p', 'btnpvmm', 'btnpvfz', 'btnaivai'].forEach(id => {
+                document.getElementById(id).classList.remove('active');
+            });
+            const btnMap = { '2p': 'btn2p', 'pvmm': 'btnpvmm', 'pvfz': 'btnpvfz', 'aivai': 'btnaivai' };
+            document.getElementById(btnMap[mode]).classList.add('active');
+            resetGame();
+        }
+
+        function resetGame() {
+            if (aiThinkTimer) clearTimeout(aiThinkTimer);
+            aiThinkTimer = null;
+            game = newGame(currentMode);
+            updateStatus();
+            render();
+            // If AI starts (AI vs AI or P vs AI where AI is p1), trigger
+            if (currentMode === 'aivai') scheduleAI();
+            // pvmm and pvfz: player is p2, AI is p1
+            if (currentMode === 'pvmm' || currentMode === 'pvfz') scheduleAI();
+        }
+
+        function updateStatus() {
+            if (!game) return;
+            const w = game.winner;
+            const el = document.getElementById('status-bar');
+            if (w) {
+                const wl = getPlayerLabel(w, game.mode);
+                el.textContent = wl + ' WINS! 🏆';
+                el.style.color = 'var(--gold)';
+            } else {
+                const t = getPlayerLabel(game.turn, game.mode);
+                const mustMove = isAdjacentToFire(game.turn === 1 ? game.p1 : game.p2, game.fires);
+                el.textContent = t + ' — ' + (mustMove ? 'MUST MOVE' : getMessage(game));
+                el.style.color = 'var(--cyan)';
+            }
+        }
+
+        let animFrame = null;
+        function render() {
+            if (animFrame) cancelAnimationFrame(animFrame);
+            animFrame = requestAnimationFrame(() => { drawBoard(game); updateStatus(); });
+        }
+
+        // Animate fires
+        setInterval(() => { if (game && !game.winner) render(); }, 200);
+
+        // ── INPUT ──
+        canvas.addEventListener('click', e => {
+            if (!game || game.winner) return;
+            const g = game;
+            const isAITurn = (g.mode === 'aivai') ||
+                (g.mode === 'pvmm' && g.turn === 1) ||
+                (g.mode === 'pvfz' && g.turn === 1);
+            if (isAITurn) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = (canvas.height) / rect.height;
+            const px = (e.clientX - rect.left) * scaleX;
+            const py = (e.clientY - rect.top) * scaleY;
+
+            if (py > ROWS * CS) return; // info panel
+
+            const [r, c] = xyToCell(px, py);
+            if (!inBounds(r, c)) return;
+
+            handleClick(r, c);
+        });
+
+        function handleClick(r, c) {
+            const g = game;
+            const pos = g.turn === 1 ? g.p1 : g.p2;
+            const opp = g.turn === 1 ? g.p2 : g.p1;
+            const mustMove = isAdjacentToFire(pos, g.fires);
+
+            // If in choose phase, clicking a valid move starts move mode, clicking elsewhere starts block mode
+            if (g.phase === 'choose') {
+                const moves = getKnightMoves(pos, g.blocks, g.fires, opp);
+                if (moves.some(m => posEq(m, [r, c]))) {
+                    g.phase = 'move';
+                    g.highlights = moves;
+                    doMove(r, c);
+                    return;
+                }
+                if (!mustMove) {
+                    // clicking any empty cell enters block mode, clicking a move cell does move
+                    g.phase = 'block1';
+                    g.highlights = getFirstBlockCandidates(g);
+                    if (g.highlights.some(m => posEq(m, [r, c]))) {
+                        g.selected = [r, c];
+                        g.phase = 'block2';
+                        g.highlights = getSecondBlockCandidates(g, [r, c]);
+                    }
+                    render();
+                    return;
+                }
+                return;
+            }
+
+            if (g.phase === 'move') {
+                if (g.highlights.some(m => posEq(m, [r, c]))) {
+                    doMove(r, c);
+                }
+                return;
+            }
+
+            if (g.phase === 'block1') {
+                if (g.highlights.some(m => posEq(m, [r, c]))) {
+                    g.selected = [r, c];
+                    g.phase = 'block2';
+                    g.highlights = getSecondBlockCandidates(g, [r, c]);
+                    if (g.highlights.length === 0) {
+                        g.phase = 'block1'; g.selected = null;
+                        g.highlights = getFirstBlockCandidates(g);
+                    }
+                    render();
+                }
+                return;
+            }
+
+            if (g.phase === 'block2') {
+                if (g.selected && posEq(g.selected, [r, c])) {
+                    g.phase = 'block1'; g.selected = null;
+                    g.highlights = getFirstBlockCandidates(g);
+                    render(); return;
+                }
+                if (g.highlights.some(m => posEq(m, [r, c]))) {
+                    g.blocks.push(g.selected, [r, c]);
+                    nextTurn();
+                }
+                return;
+            }
+        }
+
+        function doMove(r, c) {
+            const g = game;
+            if (g.turn === 1) g.p1 = [r, c]; else g.p2 = [r, c];
+            nextTurn();
+        }
+
+        function nextTurn() {
+            const g = game;
+            g.winner = checkWinner(g);
+            if (g.winner) { render(); return; }
+            g.turn = 3 - g.turn;
+            g.phase = 'choose';
+            g.selected = null;
+            g.highlights = [];
+            render();
+            // schedule AI if needed
+            const isAITurn = (g.mode === 'aivai') ||
+                (g.mode === 'pvmm' && g.turn === 1) ||
+                (g.mode === 'pvfz' && g.turn === 1);
+            if (isAITurn) scheduleAI();
+        }
+
+        function getFirstBlockCandidates(g) {
+            const { p1, p2, blocks, fires, turn } = g;
+            const pos = turn === 1 ? p1 : p2;
+            const opp = turn === 1 ? p2 : p1;
+            const empties = [];
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                if (!blocks.some(b => posEq(b, [r, c])) && !fires.some(f => posEq(f, [r, c])) && !posEq([r, c], p1) && !posEq([r, c], p2))
+                    empties.push([r, c]);
+            }
+            return empties.filter(c1 => empties.some(c2 => !posEq(c1, c2) && canPlaceBlocks(blocks, fires, p1, p2, c1, c2)));
+        }
+
+        function getSecondBlockCandidates(g, first) {
+            const { p1, p2, blocks, fires } = g;
+            const empties = [];
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                if (!blocks.some(b => posEq(b, [r, c])) && !fires.some(f => posEq(f, [r, c])) && !posEq([r, c], p1) && !posEq([r, c], p2))
+                    empties.push([r, c]);
+            }
+            return empties.filter(c2 => !posEq(c2, first) && canPlaceBlocks(blocks, fires, p1, p2, first, c2));
+        }
+
+        // ── AI (Simple in-browser versions) ──
+        function scheduleAI() {
+            if (aiThinkTimer) clearTimeout(aiThinkTimer);
+            aiThinkTimer = setTimeout(runAI, 600);
+        }
+
+        function runAI() {
+            if (!game || game.winner) return;
+            const g = game;
+            const isP1AI = (g.mode === 'aivai') || (g.mode === 'pvmm' && g.turn === 1) || (g.mode === 'pvfz' && g.turn === 1);
+            if (!isP1AI) return;
+
+            const action = g.mode === 'pvfz' || g.mode === 'aivai' && g.turn === 2
+                ? fuzzyDecide(g)
+                : minimaxDecide(g);
+
+            if (!action) { nextTurn(); return; }
+            if (action[0] === 'move') {
+                const [, pos] = action;
+                if (g.turn === 1) g.p1 = pos; else g.p2 = pos;
+                nextTurn();
+            } else {
+                const [, [c1, c2]] = action;
+                if (canPlaceBlocks(g.blocks, g.fires, g.p1, g.p2, c1, c2)) {
+                    g.blocks.push(c1, c2);
+                }
+                nextTurn();
+            }
+        }
+
+        // Simple Minimax (depth 3 for browser speed)
+        function minimaxDecide(g) {
+            const mustMove = isAdjacentToFire(g.p1, g.fires);
+            const moves = getKnightMoves(g.p1, g.blocks, g.fires, g.p2);
+            if (mustMove || moves.length === 0) {
+                if (moves.length === 0) return null;
+                const best = moves.reduce((a, m) => {
+                    const d = bfs(m, ROWS - 1, g.blocks, g.fires, g.p2);
+                    return d < bfs(a, ROWS - 1, g.blocks, g.fires, g.p2) ? m : a;
+                }, moves[0]);
+                return ['move', best];
+            }
+            const allActions = getAllActions(g, 1);
+            let best = allActions[0], bestScore = -Infinity;
+            for (const a of allActions) {
+                const score = evalAction(g, a, 1, 2);
+                if (score > bestScore) { bestScore = score; best = a; }
+            }
+            return best;
+        }
+
+        function evalAction(g, action, player, depth) {
+            const ng = cloneGame(g);
+            applyAction(ng, action, player);
+            if (ng.winner === 1) return 100000;
+            if (ng.winner === 2) return -100000;
+            if (depth === 0) return heuristic(ng, 1);
+            if (depth > 0) {
+                const opp = 3 - player;
+                const oppActions = getAllActions(ng, opp);
+                if (oppActions.length === 0) return heuristic(ng, 1);
+                let worst = Infinity;
+                for (const oa of oppActions.slice(0, 4)) {
+                    const s = evalAction(ng, oa, opp, depth - 1);
+                    if (s < worst) worst = s;
+                }
+                return worst;
+            }
+            return heuristic(ng, 1);
+        }
+
+        function heuristic(g, agent) {
+            const p = agent === 1 ? g.p1 : g.p2;
+            const o = agent === 1 ? g.p2 : g.p1;
+            const myD = bfs(p, agent === 1 ? ROWS - 1 : 0, g.blocks, g.fires, o);
+            const opD = bfs(o, agent === 1 ? 0 : ROWS - 1, g.blocks, g.fires, p);
+            return (opD - myD) * 10 + (agent === 1 ? p[0] : ROWS - 1 - p[0]);
+        }
+
+        function getAllActions(g, player) {
+            const pos = player === 1 ? g.p1 : g.p2;
+            const opp = player === 1 ? g.p2 : g.p1;
+            const moves = getKnightMoves(pos, g.blocks, g.fires, opp).map(m => ['move', m]);
+            if (isAdjacentToFire(pos, g.fires)) return moves;
+            const empties = [];
+            for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+                if (!g.blocks.some(b => posEq(b, [r, c])) && !g.fires.some(f => posEq(f, [r, c])) && !posEq([r, c], g.p1) && !posEq([r, c], g.p2))
+                    empties.push([r, c]);
+            }
+            const blockActions = [];
+            const cands = empties.filter(c1 => empties.some(c2 => !posEq(c1, c2) && canPlaceBlocks(g.blocks, g.fires, g.p1, g.p2, c1, c2)));
+            for (let i = 0; i < Math.min(cands.length, 6); i++) {
+                const second = empties.filter(c2 => !posEq(c2, cands[i]) && canPlaceBlocks(g.blocks, g.fires, g.p1, g.p2, cands[i], c2));
+                if (second.length > 0) blockActions.push(['block', [cands[i], second[0]]]);
+            }
+            return [...moves, ...blockActions];
+        }
+
+        function applyAction(g, action, player) {
+            if (action[0] === 'move') {
+                if (player === 1) g.p1 = action[1]; else g.p2 = action[1];
+            } else {
+                const [c1, c2] = action[1];
+                g.blocks.push(c1, c2);
+            }
+            g.winner = checkWinner(g);
+        }
+
+        function cloneGame(g) {
+            return {
+                p1: [...g.p1], p2: [...g.p2],
+                blocks: g.blocks.map(b => [...b]),
+                fires: g.fires.map(f => [...f]),
+                turn: g.turn, phase: g.phase,
+                selected: g.selected ? [...g.selected] : null,
+                highlights: [], winner: g.winner, mode: g.mode,
+            };
+        }
+
+        // Simple Fuzzy-like agent
+        function fuzzyDecide(g) {
+            const me = g.turn === 1 ? g.p1 : g.p2;
+            const opp = g.turn === 1 ? g.p2 : g.p1;
+            const myGoal = g.turn === 1 ? ROWS - 1 : 0;
+            const oppGoal = g.turn === 1 ? 0 : ROWS - 1;
+            const moves = getKnightMoves(me, g.blocks, g.fires, opp);
+            if (moves.length === 0) return null;
+            const mustMove = isAdjacentToFire(me, g.fires);
+            const myD = bfs(me, myGoal, g.blocks, g.fires, opp);
+            const opD = bfs(opp, oppGoal, g.blocks, g.fires, me);
+            // win immediately
+            const win = moves.find(m => m[0] === myGoal);
+            if (win) return ['move', win];
+            // fuzzy: if opponent is closer, try to block
+            if (!mustMove && opD <= myD && opD < 5) {
+                const cands = getFirstBlockCandidates(g);
+                if (cands.length > 0) {
+                    const sec = getSecondBlockCandidates(g, cands[0]);
+                    if (sec.length > 0) return ['block', [cands[0], sec[0]]];
+                }
+            }
+            // move toward goal
+            const safe = moves.filter(m => !isAdjacentToFire(m, g.fires));
+            const pool = safe.length > 0 ? safe : moves;
+            const best = pool.reduce((a, m) => bfs(m, myGoal, g.blocks, g.fires, opp) < bfs(a, myGoal, g.blocks, g.fires, opp) ? m : a, pool[0]);
+            return ['move', best];
+        }
+
+        // ── CANVAS CLICK: handle choose phase via clicking on knight itself ──
+        canvas.addEventListener('contextmenu', e => {
+            e.preventDefault();
+            if (!game || game.winner) return;
+            const g = game;
+            const isAITurn = (g.mode === 'aivai') || (g.mode === 'pvmm' && g.turn === 1) || (g.mode === 'pvfz' && g.turn === 1);
+            if (isAITurn) return;
+            const mustMove = isAdjacentToFire(g.turn === 1 ? g.p1 : g.p2, g.fires);
+            if (mustMove) return;
+            g.phase = 'block1';
+            g.highlights = getFirstBlockCandidates(g);
+            g.selected = null;
+            render();
+        });
+
+        // Show move highlights on knight click
+        canvas.addEventListener('mousedown', e => {
+            if (e.button !== 0) return;
+            if (!game || game.winner) return;
+            const g = game;
+            const isAITurn = (g.mode === 'aivai') || (g.mode === 'pvmm' && g.turn === 1) || (g.mode === 'pvfz' && g.turn === 1);
+            if (isAITurn) return;
+            if (g.phase !== 'choose') return;
+            const rect = canvas.getBoundingClientRect();
+            const px = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+            if (py > ROWS * CS) return;
+            const [r, c] = xyToCell(px, py);
+            const pos = g.turn === 1 ? g.p1 : g.p2;
+            const opp = g.turn === 1 ? g.p2 : g.p1;
+            if (posEq([r, c], pos)) {
+                g.phase = 'move';
+                g.highlights = getKnightMoves(pos, g.blocks, g.fires, opp);
+                render();
+            }
+        });
+
+        // ── KEYBOARD: ESC resets to choose, R restarts ──
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && game && !game.winner) {
+                game.phase = 'choose'; game.selected = null; game.highlights = []; render();
+            }
+            if (e.key === 'r' || e.key === 'R') resetGame();
+        });
+
+        // ── INITIAL RENDER ──
+        game = newGame('2p');
+        render();
+    </script>
+</body>
+
+</html>
