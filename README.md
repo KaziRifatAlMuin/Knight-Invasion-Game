@@ -39,9 +39,9 @@ A two-player AI board game: Minimax vs Fuzzy Logic on a 9×9 grid.
 
 <div align="center">
 
-<video controls width="720">
-    <source src="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/raw/main/doc/gameplay.mp4" type="video/mp4">
-    <p>View the gameplay video: <a href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/raw/main/doc/gameplay.mp4">download / open</a></p>
+<video controls playsinline width="720" poster="doc/ss1.png">
+    <source src="https://raw.githubusercontent.com/KaziRifatAlMuin/Knight-Invasion-Game/main/doc/gameplay.mp4" type="video/mp4">
+    <p>View the gameplay video: <a href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/blob/main/doc/gameplay.mp4">open on GitHub</a> or <a href="https://raw.githubusercontent.com/KaziRifatAlMuin/Knight-Invasion-Game/main/doc/gameplay.mp4">download raw</a></p>
 </video>
 
 </div>
