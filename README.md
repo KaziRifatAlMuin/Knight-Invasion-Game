@@ -5,7 +5,6 @@ A two-player AI board game: Minimax vs Fuzzy Logic on a 9×9 grid.
 
 ### [Play in Browser](https://kazirifatalmuin.github.io/Knight-Invasion-Game) · [Download for Windows](https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/raw/main/dist/Knight-Invasion.exe) · [Rules](#game-rules) · [AI Agents](#ai-agents) · [Quick Start](#quick-start)
 
-
 ## Contributors:
 
 [Kazi Rifat Al Muin](https://github.com/KaziRifatAlMuin)  ·  Minimax AI
@@ -37,12 +36,16 @@ A two-player AI board game: Minimax vs Fuzzy Logic on a 9×9 grid.
 
 ## Gameplay Video
 
-<div align="center">
+<div>
 
-<video controls playsinline width="720" poster="doc/ss1.png">
-    <source src="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/blob/main/doc/gameplay.mp4" type="video/mp4">
-    <p>View the gameplay video: <a href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/blob/main/doc/gameplay.mp4">open on GitHub</a> or <a href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/blob/main/doc/gameplay.mp4">download raw</a></p>
-</video>
+<div align="center">
+    <video controls playsinline width="720" poster="doc/ss1.png">
+        <source src="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/blob/main/doc/gameplay.mp4" type="video/mp4">
+        <p>View the gameplay video: <a href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/blob/main/doc/gameplay.mp4">open on GitHub</a> or <a href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/blob/main/doc/gameplay.mp4">download raw</a></p>
+    </video>
+</div>
+
+<p> Open the gameplay video on GitHub: <a href="https://github.com/KaziRifatAlMuin/Knight-Invasion-Game/blob/main/doc/gameplay.mp4" target="_blank">gameplay.mp4</a></p>
 
 </div>
 
